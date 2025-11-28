@@ -1278,7 +1278,7 @@ class TicTacToeGUI:
         self.ai_x_var = tk.StringVar(value=ai_names[0])
         self.ai_o_var = tk.StringVar(value=ai_names[min(1, len(ai_names) - 1)])
         self.ai_rounds_var = tk.StringVar(value="5")
-        self.ai_delay_var = tk.StringVar(value="10")
+        self.ai_delay_var = tk.StringVar(value="3")
 
         ttk.Label(frame, text="AI for X:", style="App.TLabel").grid(row=1, column=0, sticky="w", padx=(0, 6))
         ttk.Label(frame, text="AI for O:", style="App.TLabel").grid(row=2, column=0, sticky="w", padx=(0, 6))
@@ -1290,8 +1290,13 @@ class TicTacToeGUI:
         ttk.Entry(frame, textvariable=self.ai_rounds_var, width=10).grid(row=3, column=1, sticky="w", pady=2)
         ttk.Entry(frame, textvariable=self.ai_delay_var, width=10).grid(row=4, column=1, sticky="w", pady=2)
 
-        self.ai_start_btn = ttk.Button(frame, text="Run AI Match", style="Panel.TButton", command=self._run_ai_vs_ai)
-        self.ai_start_btn.grid(row=5, column=0, columnspan=2, sticky="ew", pady=(8, 6))
+        btn_bar = ttk.Frame(frame, style="App.TFrame")
+        btn_bar.grid(row=5, column=0, columnspan=2, sticky="ew", pady=(8, 6))
+        btn_bar.columnconfigure((0, 1), weight=1)
+        self.ai_start_btn = ttk.Button(btn_bar, text="Run AI Match", style="Panel.TButton", command=self._run_ai_vs_ai)
+        self.ai_start_btn.grid(row=0, column=0, sticky="ew", padx=(0, 4))
+        self.ai_pause_btn = ttk.Button(btn_bar, text="Pause/Resume", style="Panel.TButton", command=self._toggle_ai_pause)
+        self.ai_pause_btn.grid(row=0, column=1, sticky="ew", padx=(4, 0))
 
         ttk.Label(frame, text="Board", style="Title.TLabel").grid(row=6, column=0, columnspan=2, sticky="w", pady=(8, 4))
         board_frame = ttk.Frame(frame, style="Panel.TFrame", padding=6)
@@ -1351,6 +1356,7 @@ class TicTacToeGUI:
             return
         if getattr(self, "ai_running", False):
             return
+        self.ai_paused = False
         ai_x_name = self.ai_x_var.get()
         ai_o_name = self.ai_o_var.get()
         try:
@@ -1400,9 +1406,14 @@ class TicTacToeGUI:
             self.ai_vs_ai_popup = None
             self.ai_log = None
             self.ai_running = False
+            self.ai_paused = False
+            self.ai_board = [" "] * 9
 
     def _start_ai_round(self) -> None:
         if not getattr(self, "ai_running", False):
+            return
+        if getattr(self, "ai_paused", False):
+            self.root.after(self.ai_delay_ms, self._start_ai_round)
             return
         if self.ai_current_round > self.ai_total_rounds:
             ai_vs_ai.save_ai_scoreboard(self.ai_scores)
@@ -1428,6 +1439,9 @@ class TicTacToeGUI:
 
     def _step_ai_turn(self) -> None:
         if not getattr(self, "ai_running", False):
+            return
+        if getattr(self, "ai_paused", False):
+            self.root.after(self.ai_delay_ms, self._step_ai_turn)
             return
 
         board = self.ai_board
@@ -1466,11 +1480,18 @@ class TicTacToeGUI:
                 self.ai_log.insert(tk.END, f"Round {self.ai_current_round}: Draw.\n")
             self.ai_log.see(tk.END)
             self.ai_current_round += 1
-            self.root.after(1000, self._start_ai_round)
+            self.root.after(self.ai_delay_ms, self._start_ai_round)
             return
 
         self.ai_turn = "O" if current == "X" else "X"
         self.root.after(self.ai_delay_ms, self._step_ai_turn)
+
+    def _toggle_ai_pause(self) -> None:
+        if not getattr(self, "ai_running", False):
+            return
+        self.ai_paused = not getattr(self, "ai_paused", False)
+        if not self.ai_paused:
+            self.root.after(0, self._step_ai_turn)
 
     def _show_options_popup(self) -> None:
         options.show_options_popup(self)
