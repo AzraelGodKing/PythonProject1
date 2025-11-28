@@ -26,6 +26,7 @@ HistoryEntry = Tuple[str, str, str, float]
 _MINIMAX_CACHE: Dict[Tuple[str, bool], int] = {}
 MINIMAX_CACHE_LIMIT = 2048
 SessionStats = Dict[str, Dict[str, float]]
+DEFAULT_MATCH_LENGTH = 3
 
 
 def _new_scoreboard() -> Dict[str, Dict[str, int]]:
@@ -69,6 +70,7 @@ def _new_stats() -> SessionStats:
             "current_streak": 0,
             "best_streak": 0,
             "longest_game": 0.0,
+            "fastest_win": None,
         }
         for diff in DIFFICULTIES
     }
@@ -77,13 +79,25 @@ def _new_stats() -> SessionStats:
 def update_stats(stats: SessionStats, difficulty: str, result: str, duration: float) -> None:
     entry = stats.setdefault(
         difficulty,
-        {"games": 0, "X": 0, "O": 0, "Draw": 0, "current_streak": 0, "best_streak": 0, "longest_game": 0.0},
+        {
+            "games": 0,
+            "X": 0,
+            "O": 0,
+            "Draw": 0,
+            "current_streak": 0,
+            "best_streak": 0,
+            "longest_game": 0.0,
+            "fastest_win": None,
+        },
     )
     entry["games"] += 1
     entry[result] = entry.get(result, 0) + 1
     if result == "X":
         entry["current_streak"] += 1
         entry["best_streak"] = max(entry["best_streak"], entry["current_streak"])
+        if duration and duration > 0:
+            fw = entry.get("fastest_win")
+            entry["fastest_win"] = duration if fw is None else min(fw, duration)
     else:
         entry["current_streak"] = 0
     entry["longest_game"] = max(entry.get("longest_game", 0.0), duration)
@@ -102,8 +116,106 @@ def print_stats(stats: SessionStats) -> None:
             f"- {diff}: games={games}, wins={entry.get('X', 0)}, "
             f"losses={entry.get('O', 0)}, draws={entry.get('Draw', 0)}, "
             f"win rate={win_rate:.0f}%, best streak={entry.get('best_streak', 0)}, "
-            f"longest game={entry.get('longest_game', 0.0):.1f}s"
+            f"longest game={entry.get('longest_game', 0.0):.1f}s, "
+            f"fastest win={entry.get('fastest_win') or 'n/a'}"
         )
+
+
+def compute_achievements(stats: SessionStats, history: List[HistoryEntry]) -> List[str]:
+    achievements: List[str] = []
+    total_wins = sum(int(stats.get(diff, {}).get("X", 0)) for diff in DIFFICULTIES)
+    total_games = sum(int(stats.get(diff, {}).get("games", 0)) for diff in DIFFICULTIES)
+    total_draws = sum(int(stats.get(diff, {}).get("Draw", 0)) for diff in DIFFICULTIES)
+    max_streak = max(int(stats.get(diff, {}).get("best_streak", 0)) for diff in DIFFICULTIES)
+    fastest_wins = [entry.get("fastest_win") for entry in stats.values() if entry.get("fastest_win")]
+    fastest_win = min(fastest_wins) if fastest_wins else None
+    hard_wins = int(stats.get("Hard", {}).get("X", 0))
+    easy_wins = int(stats.get("Easy", {}).get("X", 0))
+    normal_wins = int(stats.get("Normal", {}).get("X", 0))
+    hard_draws = int(stats.get("Hard", {}).get("Draw", 0))
+    normal_draws = int(stats.get("Normal", {}).get("Draw", 0))
+    easy_draws = int(stats.get("Easy", {}).get("Draw", 0))
+    longest_games = [entry.get("longest_game", 0.0) for entry in stats.values()]
+    longest_game = max(longest_games) if longest_games else 0.0
+    recent_hard_wins = sum(1 for diff, res, _, _ in history[-5:] if diff == "Hard" and res == "X")
+    recent_normal_wins = sum(1 for diff, res, _, _ in history[-5:] if diff == "Normal" and res == "X")
+    recent_easy_wins = sum(1 for diff, res, _, _ in history[-5:] if diff == "Easy" and res == "X")
+    recent_draws = sum(1 for _, res, _, _ in history[-5:] if res == "Draw")
+
+    streak = 0
+    best_streak_recent = 0
+    for _, res, _, _ in history[-10:]:
+        if res == "X":
+            streak += 1
+            best_streak_recent = max(best_streak_recent, streak)
+        else:
+            streak = 0
+
+    milestones = [
+        (total_wins >= 1, "First win!"),
+        (total_wins >= 5, "Win 5 games overall."),
+        (total_wins >= 10, "Win 10 games overall."),
+        (total_wins >= 25, "Win 25 games overall."),
+        (total_wins >= 50, "Win 50 games overall."),
+        (total_wins >= 100, "Win 100 games overall."),
+        (total_games >= 10, "Play 10 games overall."),
+        (total_games >= 50, "Play 50 games overall."),
+        (total_games >= 100, "Play 100 games overall."),
+        (total_draws >= 5, "Five draws overall."),
+        (total_draws >= 15, "Draw connoisseur: 15 draws overall."),
+    ]
+    achievements.extend([desc for ok, desc in milestones if ok])
+
+    streaks = [
+        (max_streak >= 3, f"Hot streak: {max_streak} wins in a row."),
+        (max_streak >= 5, f"On fire: {max_streak} wins in a row."),
+        (best_streak_recent >= 3, f"Recent streak: {best_streak_recent} in last 10."),
+    ]
+    achievements.extend([desc for ok, desc in streaks if ok])
+
+    if fastest_win and fastest_win <= 15:
+        achievements.append(f"Speedster: win under {fastest_win:.1f}s.")
+    if fastest_win and fastest_win <= 8:
+        achievements.append(f"Blazing fast: win under {fastest_win:.1f}s.")
+    if longest_game >= 60:
+        achievements.append(f"Marathoner: played a game lasting {longest_game:.1f}s.")
+
+    difficulty_achs = [
+        (easy_wins >= 3, "Easy mode warmup: 3 wins."),
+        (easy_wins >= 10, "Easy mode veteran: 10 wins."),
+        (normal_wins >= 3, "Normal contender: 3 wins."),
+        (normal_wins >= 10, "Normal champ: 10 wins."),
+        (hard_wins >= 1, "Cracked Hard mode once."),
+        (hard_wins >= 3, "Hard mode regular (3+ wins)."),
+        (hard_wins >= 5, "Hard mode seasoned (5 wins)."),
+        (hard_draws >= 3, "Stalemate with Hard: 3 draws."),
+        (normal_draws >= 5, "Middle ground: 5 draws on Normal."),
+        (easy_draws >= 3, "Even on Easy: 3 draws."),
+    ]
+    achievements.extend([desc for ok, desc in difficulty_achs if ok])
+
+    recent_achs = [
+        (recent_hard_wins >= 1, "Recent Hard win in last 5 games."),
+        (recent_normal_wins >= 2, "Two Normal wins in last 5."),
+        (recent_easy_wins >= 3, "Easy sweep: 3 wins in last 5 on Easy."),
+        (recent_draws >= 2, "Recent draw-heavy run."),
+    ]
+    achievements.extend([desc for ok, desc in recent_achs if ok])
+
+    if hard_wins >= 1 and normal_wins >= 1 and easy_wins >= 1:
+        achievements.append("All-rounder: wins on Easy, Normal, Hard.")
+    if hard_wins >= 2 and max_streak >= 2:
+        achievements.append("Hard streaker: 2+ Hard wins with streak 2+.")
+    if fastest_win and max_streak >= 3:
+        achievements.append("Fast and consistent: streak 3+ with a fast win.")
+
+    return achievements or ["None yet. Keep playing!"]
+
+
+def print_achievements(stats: SessionStats, history: List[HistoryEntry]) -> None:
+    print("\nAchievements:")
+    for item in compute_achievements(stats, history):
+        print(f"- {item}")
 
 
 def _compute_score_hash(scoreboard: Dict[str, Dict[str, int]]) -> str:
@@ -849,6 +961,7 @@ def play_session(scoreboard: Dict[str, Dict[str, int]]) -> Dict[str, Dict[str, i
         print_history(session_history)
         print_stats(stats)
         print_match_score(match_wins, match_target)
+        print_achievements(stats, session_history)
 
         result = play_round(ai_move_fn, difficulty_label)
         if result is None:
@@ -872,6 +985,7 @@ def play_session(scoreboard: Dict[str, Dict[str, int]]) -> Dict[str, Dict[str, i
         print_stats(stats)
         print_history(session_history)
         print_match_score(match_wins, match_target)
+        print_achievements(stats, session_history)
 
         if match_wins["X"] >= match_target or match_wins["O"] >= match_target:
             match_winner = "X" if match_wins["X"] > match_wins["O"] else "O"
