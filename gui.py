@@ -4,6 +4,7 @@ The UI is a thin layer over the existing logic: board state, AI moves, and score
 """
 
 import importlib.util
+import json
 import pathlib
 import tkinter as tk
 from typing import Optional
@@ -11,6 +12,7 @@ from tkinter import messagebox, ttk
 
 
 MODULE_PATH = pathlib.Path(__file__).with_name("tic-tac-toe.py")
+SETTINGS_FILE = "gui_settings.json"
 spec = importlib.util.spec_from_file_location("tictactoe_module_gui", MODULE_PATH)
 module = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
 assert spec.loader is not None
@@ -92,10 +94,11 @@ class TicTacToeGUI:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.root.title("Tic-Tac-Toe")
-        self.palette = dict(PALETTE_DEFAULT)
-        self.fonts = dict(FONTS_DEFAULT)
-        self.high_contrast = tk.BooleanVar(value=False)
-        self.large_fonts = tk.BooleanVar(value=False)
+        settings = self._load_settings()
+        self.high_contrast = tk.BooleanVar(value=settings["high_contrast"])
+        self.large_fonts = tk.BooleanVar(value=settings["large_fonts"])
+        self.palette = dict(PALETTE_HIGH_CONTRAST if self.high_contrast.get() else PALETTE_DEFAULT)
+        self.fonts = dict(FONTS_LARGE if self.large_fonts.get() else FONTS_DEFAULT)
         self._configure_style()
         self.session = GameSession()
 
@@ -103,9 +106,9 @@ class TicTacToeGUI:
         self.score_var = tk.StringVar()
         self.history_var = tk.StringVar(value="Recent: none")
         self.log_path_var = tk.StringVar(value=f"History file: {self.session.last_history_path}")
-        self.confirm_moves = tk.BooleanVar(value=True)
-        self.auto_start = tk.BooleanVar(value=False)
-        self.rotate_logs = tk.BooleanVar(value=True)
+        self.confirm_moves = tk.BooleanVar(value=settings["confirm_moves"])
+        self.auto_start = tk.BooleanVar(value=settings["auto_start"])
+        self.rotate_logs = tk.BooleanVar(value=settings["rotate_logs"])
         self.pending_ai_id: Optional[str] = None
         self.last_move_idx: Optional[int] = None
         self.hint_highlight: Optional[int] = None
@@ -113,6 +116,7 @@ class TicTacToeGUI:
         self._build_layout()
         self._refresh_scoreboard()
         self._bind_keys()
+        self._apply_theme()
 
     def _color(self, key: str) -> str:
         return self.palette[key]
@@ -148,6 +152,43 @@ class TicTacToeGUI:
         self.root.bind("<Control-N>", lambda _e: self.start_new_game())
         self.root.bind("n", lambda _e: self.start_new_game())
         self.root.bind("N", lambda _e: self.start_new_game())
+
+    def _load_settings(self) -> dict:
+        defaults = {
+            "confirm_moves": True,
+            "auto_start": False,
+            "rotate_logs": True,
+            "high_contrast": False,
+            "large_fonts": False,
+        }
+        try:
+            with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if not isinstance(data, dict):
+                return defaults
+            return {
+                "confirm_moves": bool(data.get("confirm_moves", defaults["confirm_moves"])),
+                "auto_start": bool(data.get("auto_start", defaults["auto_start"])),
+                "rotate_logs": bool(data.get("rotate_logs", defaults["rotate_logs"])),
+                "high_contrast": bool(data.get("high_contrast", defaults["high_contrast"])),
+                "large_fonts": bool(data.get("large_fonts", defaults["large_fonts"])),
+            }
+        except (OSError, json.JSONDecodeError):
+            return defaults
+
+    def _save_settings(self) -> None:
+        data = {
+            "confirm_moves": self.confirm_moves.get(),
+            "auto_start": self.auto_start.get(),
+            "rotate_logs": self.rotate_logs.get(),
+            "high_contrast": self.high_contrast.get(),
+            "large_fonts": self.large_fonts.get(),
+        }
+        try:
+            with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+                json.dump(data, f)
+        except OSError:
+            pass
 
     def _configure_style(self) -> None:
         self.root.configure(bg=self._color("BG"))
@@ -221,12 +262,22 @@ class TicTacToeGUI:
             self.score_label.configure(font=self._font("text"))
             self.history_label.configure(font=self._font("text"))
             self.log_label.configure(font=self._font("text"))
+        self._save_settings()
 
     def _toggle_contrast(self) -> None:
         self._apply_theme()
 
     def _toggle_font_size(self) -> None:
         self._apply_theme()
+
+    def _toggle_confirm(self) -> None:
+        self._save_settings()
+
+    def _toggle_auto_start(self) -> None:
+        self._save_settings()
+
+    def _toggle_rotate_logs(self) -> None:
+        self._save_settings()
 
     def _build_controls(self, parent: tk.Widget) -> None:
         top = ttk.Frame(parent, padding=10, style="App.TFrame")
@@ -330,9 +381,9 @@ class TicTacToeGUI:
 
         opts = ttk.Frame(info, style="Panel.TFrame")
         opts.grid(row=8, column=0, sticky="ew", pady=(8, 0))
-        ttk.Checkbutton(opts, text="Require confirmations", variable=self.confirm_moves, style="App.TCheckbutton").grid(row=0, column=0, sticky="w", pady=2)
-        ttk.Checkbutton(opts, text="Auto-start next game", variable=self.auto_start, style="App.TCheckbutton").grid(row=1, column=0, sticky="w", pady=2)
-        ttk.Checkbutton(opts, text="Rotate history filenames", variable=self.rotate_logs, style="App.TCheckbutton").grid(row=2, column=0, sticky="w", pady=2)
+        ttk.Checkbutton(opts, text="Require confirmations", variable=self.confirm_moves, style="App.TCheckbutton", command=self._toggle_confirm).grid(row=0, column=0, sticky="w", pady=2)
+        ttk.Checkbutton(opts, text="Auto-start next game", variable=self.auto_start, style="App.TCheckbutton", command=self._toggle_auto_start).grid(row=1, column=0, sticky="w", pady=2)
+        ttk.Checkbutton(opts, text="Rotate history filenames", variable=self.rotate_logs, style="App.TCheckbutton", command=self._toggle_rotate_logs).grid(row=2, column=0, sticky="w", pady=2)
         ttk.Checkbutton(opts, text="High contrast", variable=self.high_contrast, style="App.TCheckbutton", command=self._toggle_contrast).grid(row=3, column=0, sticky="w", pady=2)
         ttk.Checkbutton(opts, text="Larger fonts", variable=self.large_fonts, style="App.TCheckbutton", command=self._toggle_font_size).grid(row=4, column=0, sticky="w", pady=2)
 
