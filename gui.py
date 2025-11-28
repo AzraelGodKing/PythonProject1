@@ -1047,15 +1047,31 @@ class TicTacToeGUI:
         self.root.after(220, lambda: btn.configure(bg=original, fg=self._color("O"), relief="raised"))
 
     def _undo_move(self) -> None:
-        if self.session.game_over or self.last_move_idx is None:
+        if self.session.game_over:
             return
         if self.pending_ai_id:
             self.root.after_cancel(self.pending_ai_id)
             self.pending_ai_id = None
-        self.session.board[self.last_move_idx] = " "
+        if not self.session.moves:
+            return
+
+        def _pop_and_clear() -> None:
+            idx, _ = self.session.moves.pop()
+            self.session.board[idx] = " "
+
+        last_symbol = self.session.moves[-1][1]
+        _pop_and_clear()
+        # If we just removed an AI move, also remove the preceding player move so turn returns to player.
+        if last_symbol == "O" and self.session.moves and self.session.moves[-1][1] == "X":
+            _pop_and_clear()
+
         self.last_move_idx = None
-        self._refresh_board()
+        self.session.game_over = False
+        self.player_turn = True
         self.status_var.set("Move undone. Your turn.")
+        self._set_status_icon("player")
+        self._refresh_board()
+        self._refresh_move_log()
 
     def _show_hint(self) -> None:
         if self.session.game_over:
