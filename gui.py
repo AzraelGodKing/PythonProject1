@@ -847,7 +847,7 @@ class TicTacToeGUI:
 
     def _reset_scoreboard(self) -> None:
         if messagebox.askyesno("Reset scoreboard", "Reset all scores to zero?"):
-            self.session.scoreboard = module._new_scoreboard()
+            self.session.scoreboard = module.new_scoreboard()
             module.save_scoreboard(self.session.scoreboard)
             self._refresh_scoreboard()
             self.status_var.set("Scoreboard reset.")
