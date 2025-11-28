@@ -15,6 +15,7 @@ SCOREBOARD_FILE = os.path.join(SCOREBOARD_DIR, "scoreboard.json")
 SCOREBOARD_BACKUP = os.path.join(SCOREBOARD_DIR, "scoreboard.json.bak")
 HISTORY_FILE = os.path.join(HISTORY_DIR, "session_history.log")
 SAFE_MODE = os.getenv("TICTACTOE_SAFE_MODE", "0") not in {"0", "false", "False", "", None}
+SAFE_MODE_MESSAGE = "Safe mode enabled; skipping persistence."
 SCORE_HASH_KEY = "hash"
 SCORE_DATA_KEY = "data"
 SCORE_PREV_KEY = "previous"
@@ -151,11 +152,18 @@ def load_scoreboard(file_path: str = SCOREBOARD_FILE) -> Dict[str, Dict[str, int
     if SAFE_MODE:
         return default_scoreboard
 
+    data = None
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
-        return default_scoreboard
+        # attempt backup
+        try:
+            with open(SCOREBOARD_BACKUP, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            print("Scoreboard restored from backup.")
+        except (OSError, json.JSONDecodeError):
+            return default_scoreboard
 
     # Support legacy flat dict files for backward compatibility
     if isinstance(data, dict) and SCORE_DATA_KEY not in data:
@@ -184,7 +192,7 @@ def load_scoreboard(file_path: str = SCOREBOARD_FILE) -> Dict[str, Dict[str, int
 
 def save_scoreboard(score: Dict[str, Dict[str, int]], file_path: str = SCOREBOARD_FILE) -> None:
     if SAFE_MODE:
-        print("Safe mode enabled; skipping scoreboard save.")
+        print(SAFE_MODE_MESSAGE)
         return
     previous_payload = None
     try:
@@ -235,7 +243,7 @@ def save_scoreboard(score: Dict[str, Dict[str, int]], file_path: str = SCOREBOAR
 
 def save_session_history_to_file(history: List[HistoryEntry], file_path: str = HISTORY_FILE, rotate: bool = False) -> str:
     if SAFE_MODE:
-        print("Safe mode enabled; skipping history save.")
+        print(SAFE_MODE_MESSAGE)
         return file_path
     if not history:
         print("No session history to save.")
