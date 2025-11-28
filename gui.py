@@ -642,8 +642,10 @@ class TicTacToeGUI:
         status_frame = ttk.Frame(info, style="Panel.TFrame")
         status_frame.grid(row=0, column=0, sticky="ew", pady=(0, 4))
         ttk.Label(status_frame, text="Status", style="Title.TLabel").grid(row=0, column=0, sticky="w")
-        self.status_label = ttk.Label(status_frame, textvariable=self.status_var, style="Status.TLabel", font=self._font("title"), wraplength=260)
-        self.status_label.grid(row=1, column=0, sticky="w", pady=(2, 6))
+        self.status_icon = ttk.Label(status_frame, text="⏸️", style="Status.TLabel", font=self._font("title"))
+        self.status_icon.grid(row=1, column=0, sticky="w", padx=(0, 6))
+        self.status_label = ttk.Label(status_frame, textvariable=self.status_var, style="Status.TLabel", font=self._font("title"), wraplength=240)
+        self.status_label.grid(row=1, column=1, sticky="w", pady=(2, 6))
 
         ttk.Label(info, text="Scoreboard", style="Title.TLabel").grid(row=2, column=0, sticky="w", pady=(4, 0))
         self.score_label = ttk.Label(info, textvariable=self.score_var, style="App.TLabel", font=self._font("text"), wraplength=260, justify="left")
@@ -676,10 +678,13 @@ class TicTacToeGUI:
         ttk.Button(btn_row, text="Hint", style="Panel.TButton", command=self._show_hint).grid(row=0, column=0, sticky="ew", padx=3)
         ttk.Button(btn_row, text="Undo Move", style="Panel.TButton", command=self._undo_move).grid(row=0, column=1, sticky="ew", padx=3)
 
-        ttk.Button(info, text="Options", style="Panel.TButton", command=self._show_options_popup).grid(row=12, column=0, sticky="ew", pady=(6, 2))
-        ttk.Button(info, text="View history", style="Panel.TButton", command=self._view_history_popup).grid(row=13, column=0, sticky="ew", pady=(4, 2))
-        ttk.Button(info, text="Save history now", style="Panel.TButton", command=self._save_history_now).grid(row=14, column=0, sticky="ew", pady=(2, 2))
-        ttk.Button(info, text="View achievements", style="Panel.TButton", command=self._show_achievements_popup).grid(row=15, column=0, sticky="ew", pady=(2, 0))
+        records = ttk.Frame(info, style="Panel.TFrame")
+        records.grid(row=12, column=0, sticky="ew", pady=(6, 2))
+        records.columnconfigure((0, 1), weight=1)
+        ttk.Button(records, text="View history", style="Panel.TButton", command=self._view_history_popup).grid(row=0, column=0, sticky="ew", padx=2, pady=2)
+        ttk.Button(records, text="Save history", style="Panel.TButton", command=self._save_history_now).grid(row=0, column=1, sticky="ew", padx=2, pady=2)
+        ttk.Button(records, text="Achievements", style="Panel.TButton", command=self._show_achievements_popup).grid(row=1, column=0, columnspan=2, sticky="ew", padx=2, pady=(2, 2))
+        ttk.Button(records, text="Options", style="Panel.TButton", command=self._show_options_popup).grid(row=2, column=0, columnspan=2, sticky="ew", padx=2, pady=(2, 0))
 
     def _on_diff_change(self, _event=None) -> None:
         self._apply_selection()
@@ -720,12 +725,15 @@ class TicTacToeGUI:
 
     def _hover_on(self, btn: tk.Button) -> None:
         if not self.animations_enabled.get():
+            if btn["text"] == " ":
+                btn.configure(highlightbackground=self._color("ACCENT"), highlightthickness=2)
             return
         if btn["text"] == " ":
             btn.configure(bg=self._color("ACCENT"), fg=self._color("BG"), relief="solid")
 
     def _hover_off(self, btn: tk.Button) -> None:
         if not self.animations_enabled.get():
+            btn.configure(highlightbackground=self._color("ACCENT"), highlightthickness=1)
             return
         val = btn["text"]
         if val == "X":
