@@ -184,6 +184,7 @@ class TicTacToeGUI:
         self._apply_theme()
         atexit.register(self._shutdown_logger)
         self.root.report_callback_exception = self._handle_exception
+        self.player_turn = True
 
     def _color(self, key: str) -> str:
         return self.palette[key]
@@ -660,9 +661,10 @@ class TicTacToeGUI:
         self.session.game_over = False
         self.status_var.set(f"{self.session.label()}: Your turn.")
         self._refresh_scoreboard()
+        self.player_turn = True
 
     def _handle_player_move(self, idx: int) -> None:
-        if self.session.game_over or self.session.board[idx] != " ":
+        if self.session.game_over or self.session.board[idx] != " " or not getattr(self, "player_turn", True):
             return
 
         r, c = divmod(idx, 3)
@@ -683,6 +685,7 @@ class TicTacToeGUI:
             return
 
         self.status_var.set("AI is thinking...")
+        self.player_turn = False
         self.pending_ai_id = self.root.after(250, self._ai_move)
 
     def _ai_move(self) -> None:
@@ -699,6 +702,7 @@ class TicTacToeGUI:
             self._finish_round(winner or "Draw")
             return
         self.status_var.set("Your turn.")
+        self.player_turn = True
 
     def _finish_round(self, winner: str) -> None:
         self.session.game_over = True
