@@ -1363,7 +1363,7 @@ class TicTacToeGUI:
             delay_sec = float(self.ai_delay_var.get().strip() or "10")
         except ValueError:
             delay_sec = 10.0
-        delay_sec = max(5.0, min(delay_sec, 20.0))
+        delay_sec = max(1.0, min(delay_sec, 10.0))
         self.ai_delay_ms = int(delay_sec * 1000)
 
         ai_x_fn = ai_vs_ai.AI_PLAYERS.get(ai_x_name)
