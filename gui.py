@@ -160,7 +160,7 @@ class TicTacToeGUI:
         self.root = root
         self.root.title("Tic-Tac-Toe")
         self.root.geometry("1100x800")
-        self.root.minsize(980, 720)
+        self.root.minsize(720, 600)
         self.settings_path = os.environ.get("GUI_SETTINGS_PATH", SETTINGS_FILE)
         self.logger = self._init_logger()
         settings = self._load_settings()
@@ -290,10 +290,36 @@ class TicTacToeGUI:
                 pass
 
     def _build_layout(self) -> None:
-        container = ttk.Frame(self.root, padding=10, style="App.TFrame")
-        container.grid(row=0, column=0, sticky="nsew")
+        # Scrollable container so all controls remain reachable on smaller screens.
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
+        outer = ttk.Frame(self.root, style="App.TFrame")
+        outer.grid(row=0, column=0, sticky="nsew")
+        outer.columnconfigure(0, weight=1)
+        outer.rowconfigure(0, weight=1)
+
+        canvas = tk.Canvas(outer, highlightthickness=0, bg=self._color("BG"))
+        vbar = ttk.Scrollbar(outer, orient="vertical", command=canvas.yview)
+        hbar = ttk.Scrollbar(outer, orient="horizontal", command=canvas.xview)
+        canvas.configure(yscrollcommand=vbar.set, xscrollcommand=hbar.set)
+        canvas.grid(row=0, column=0, sticky="nsew")
+        vbar.grid(row=0, column=1, sticky="ns")
+        hbar.grid(row=1, column=0, sticky="ew")
+        outer.rowconfigure(0, weight=1)
+        outer.columnconfigure(0, weight=1)
+        scroll_frame = ttk.Frame(canvas, padding=10, style="App.TFrame")
+        window_id = canvas.create_window((0, 0), window=scroll_frame, anchor="nw")
+
+        def _on_frame_configure(_event=None) -> None:
+            canvas.configure(scrollregion=canvas.bbox("all"))
+
+        def _on_canvas_configure(event) -> None:
+            canvas.itemconfigure(window_id, width=event.width)
+
+        scroll_frame.bind("<Configure>", _on_frame_configure)
+        canvas.bind("<Configure>", _on_canvas_configure)
+        self._canvas = canvas
+        container = scroll_frame
         container.columnconfigure(0, weight=3)
         container.columnconfigure(1, weight=2)
 
