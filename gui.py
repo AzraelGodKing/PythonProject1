@@ -170,6 +170,8 @@ class TicTacToeGUI:
         self.match_target = (module.DEFAULT_MATCH_LENGTH // 2) + 1
         self.match_wins = {"X": 0, "O": 0, "Draw": 0}
         self.match_over = False
+        self.options_popup: Optional[tk.Toplevel] = None
+        self.history_popup: Optional[tk.Toplevel] = None
 
         self.status_var = tk.StringVar(value="Choose a difficulty and start a game.")
         self.score_var = tk.StringVar()
@@ -790,12 +792,17 @@ class TicTacToeGUI:
         self.status_var.set(f"Hint: consider row {r + 1}, column {c + 1}.")
 
     def _view_history_popup(self) -> None:
+        if self.history_popup and self.history_popup.winfo_exists():
+            self.history_popup.lift()
+            self.history_popup.focus_set()
+            return
         if not self.session.history:
             messagebox.showinfo("History", "No history yet.")
             return
         popup = tk.Toplevel(self.root)
         popup.title("Recent history")
         popup.configure(bg=self._color("BG"))
+        self.history_popup = popup
         text = tk.Text(
             popup,
             width=40,
@@ -808,6 +815,10 @@ class TicTacToeGUI:
         for diff, result, ts in self.session.history[-20:]:
             text.insert("end", f"{ts} - {diff}: {result}\n")
         text.configure(state="disabled")
+        def on_close() -> None:
+            self.history_popup = None
+            popup.destroy()
+        popup.protocol("WM_DELETE_WINDOW", on_close)
 
     def _save_history_now(self) -> None:
         if not self.session.history:
@@ -829,9 +840,14 @@ class TicTacToeGUI:
             pass
 
     def _show_options_popup(self) -> None:
+        if self.options_popup and self.options_popup.winfo_exists():
+            self.options_popup.lift()
+            self.options_popup.focus_set()
+            return
         popup = tk.Toplevel(self.root)
         popup.title("Options")
         popup.configure(bg=self._color("BG"))
+        self.options_popup = popup
         frame = ttk.Frame(popup, padding=12, style="App.TFrame")
         frame.grid(row=0, column=0, sticky="nsew")
         popup.columnconfigure(0, weight=1)
@@ -866,7 +882,13 @@ class TicTacToeGUI:
         theme_box.bind("<<ComboboxSelected>>", self._on_theme_change)
 
         ttk.Button(frame, text="Copy diagnostics", style="Panel.TButton", command=self._copy_diagnostics).grid(row=9, column=0, sticky="ew", pady=(6, 0))
-        ttk.Button(frame, text="Close", style="Panel.TButton", command=popup.destroy).grid(row=10, column=0, sticky="e", pady=(10, 0))
+        ttk.Button(frame, text="Close", style="Panel.TButton", command=lambda: self._close_options_popup(popup)).grid(row=10, column=0, sticky="e", pady=(10, 0))
+
+    def _close_options_popup(self, popup: tk.Toplevel) -> None:
+        try:
+            popup.destroy()
+        finally:
+            self.options_popup = None
 
 
 
