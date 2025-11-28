@@ -252,8 +252,8 @@ class TicTacToeGUI:
             top,
             textvariable=self.personality_var,
             state="readonly",
-            values=["balanced", "defensive", "aggressive"],
-            width=12,
+            values=["balanced", "defensive", "aggressive", "misdirection", "mirror"],
+            width=14,
             style="App.TCombobox",
         )
         self.personality_menu.grid(row=0, column=3, padx=5, sticky="w")

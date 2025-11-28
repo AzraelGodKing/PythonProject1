@@ -440,10 +440,149 @@ def ai_move_normal_aggressive(board: List[str]) -> int:
     return random.choice(open_spots) if open_spots else 0
 
 
+def find_fork_move(board: List[str], symbol: str) -> Optional[int]:
+    """Return a move that creates two or more winning lines (a fork) for symbol."""
+    winning_lines = [
+        (0, 1, 2),
+        (3, 4, 5),
+        (6, 7, 8),
+        (0, 3, 6),
+        (1, 4, 7),
+        (2, 5, 8),
+        (0, 4, 8),
+        (2, 4, 6),
+    ]
+    best: List[Tuple[int, int]] = []  # (two_way_count, idx)
+    for idx in range(9):
+        if board[idx] != " ":
+            continue
+        board[idx] = symbol
+        two_way = 0
+        for a, b, c in winning_lines:
+            line = (board[a], board[b], board[c])
+            if line.count(symbol) == 2 and line.count(" ") == 1:
+                two_way += 1
+        board[idx] = " "
+        if two_way >= 2:
+            best.append((two_way, idx))
+
+    if not best:
+        return None
+
+    # prefer higher two-way counts, then corners, then center, then lowest index
+    def sort_key(item: Tuple[int, int]) -> Tuple[int, int, int]:
+        count, idx = item
+        is_corner = 1 if idx in (0, 2, 6, 8) else 0
+        is_center = 1 if idx == 4 else 0
+        return (count, is_corner, is_center, -idx)
+
+    best_idx = max(best, key=sort_key)[1]
+    return best_idx
+
+
+def ai_move_misdirection(board: List[str]) -> int:
+    """AI that prefers forks and trickier setups before standard play."""
+    win_idx = find_winning_move(board, "O")
+    if win_idx is not None:
+        return win_idx
+
+    block_idx = find_winning_move(board, "X")
+    if block_idx is not None:
+        return block_idx
+
+    has_opposite_corners = (board[0] == board[8] == "X") or (board[2] == board[6] == "X")
+    side_spots = [i for i in (1, 3, 5, 7) if board[i] == " "]
+
+    fork_idx = find_fork_move(board, "O")
+    if fork_idx is not None:
+        return fork_idx
+
+    block_fork_idx = find_fork_move(board, "X")
+    if block_fork_idx is not None:
+        if has_opposite_corners and block_fork_idx not in side_spots and side_spots:
+            return random.choice(side_spots)
+        return block_fork_idx
+
+    # If player has opposite corners, take a side to avoid easy fork setups.
+    if has_opposite_corners and side_spots:
+        return random.choice(side_spots)
+
+    if board[4] == " ":
+        return 4
+
+    corners = [i for i in (0, 2, 6, 8) if board[i] == " "]
+    if corners:
+        return random.choice(corners)
+
+    sides = [i for i in (1, 3, 5, 7) if board[i] == " "]
+    if sides:
+        return random.choice(sides)
+
+    open_spots = [idx for idx, cell in enumerate(board) if cell == " "]
+    return random.choice(open_spots) if open_spots else 0
+
+
+def ai_move_mirror(board: List[str]) -> int:
+    """AI that mirrors the player's position across the center when possible, with defensive tweaks."""
+    win_idx = find_winning_move(board, "O")
+    if win_idx is not None:
+        return win_idx
+
+    block_idx = find_winning_move(board, "X")
+    if block_idx is not None:
+        return block_idx
+
+    has_opposite_corners = (board[0] == board[8] == "X") or (board[2] == board[6] == "X")
+    side_spots = [i for i in (1, 3, 5, 7) if board[i] == " "]
+
+    block_fork_idx = find_fork_move(board, "X")
+    if block_fork_idx is not None:
+        if has_opposite_corners and block_fork_idx not in side_spots and side_spots:
+            return random.choice(side_spots)
+        return block_fork_idx
+
+    if has_opposite_corners and side_spots:
+        return random.choice(side_spots)
+
+    # If the player has multiple moves on the board, fall back to optimal play to avoid easy lures.
+    if board.count("X") >= 2:
+        return ai_move_hard(board)
+
+    mirror_targets = set()
+    for idx, cell in enumerate(board):
+        if cell == "X":
+            mirror_idx = 8 - idx
+            if board[mirror_idx] == " ":
+                mirror_targets.add(mirror_idx)
+
+    if board.count("X") == 1 and mirror_targets:
+        return next(iter(mirror_targets))
+
+    open_spots = [i for i, v in enumerate(board) if v == " "]
+    if not open_spots:
+        return 0
+
+    best_idx = open_spots[0]
+    best_score = -float("inf")
+    for idx in open_spots:
+        board[idx] = "O"
+        score = _minimax(board, False, 0)
+        board[idx] = " "
+        if idx in mirror_targets:
+            score += 0.5  # prefer mirroring when equally good
+        if score > best_score:
+            best_score = score
+            best_idx = idx
+
+    return best_idx
+
+
 NORMAL_PERSONALITIES: Dict[str, Callable[[List[str]], int]] = {
     "balanced": ai_move_normal,
     "defensive": ai_move_normal_defensive,
     "aggressive": ai_move_normal_aggressive,
+    "misdirection": ai_move_misdirection,
+    "mirror": ai_move_mirror,
 }
 
 
@@ -526,13 +665,19 @@ def choose_normal_personality() -> Tuple[str, Callable[[List[str]], int]]:
         "defensive": "defensive",
         "3": "aggressive",
         "aggressive": "aggressive",
+        "4": "misdirection",
+        "misdirection": "misdirection",
+        "5": "mirror",
+        "mirror": "mirror",
     }
     while True:
-        choice = input("Choose AI personality for Normal - 1: Balanced, 2: Defensive, 3: Aggressive: ").strip().lower()
+        choice = input(
+            "Choose AI personality for Normal - 1: Balanced, 2: Defensive, 3: Aggressive, 4: Misdirection, 5: Mirror: "
+        ).strip().lower()
         if choice in options:
             personality = options[choice]
             return personality, NORMAL_PERSONALITIES[personality]
-        print("Please enter 1, 2, 3, or a personality name (balanced/defensive/aggressive).")
+        print("Please enter 1-5 or a personality name (balanced/defensive/aggressive/misdirection/mirror).")
 
 
 def choose_difficulty() -> Tuple[str, Callable[[List[str]], int], str]:
