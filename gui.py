@@ -173,7 +173,7 @@ class TicTacToeGUI:
         self.animations_enabled = tk.BooleanVar(value=settings["animations"])
         self.sound_enabled = tk.BooleanVar(value=settings["sound"])
         self.show_coords = tk.BooleanVar(value=settings["show_coords"])
-        self.show_heatmap = tk.BooleanVar(value=False)
+        self.show_heatmap = tk.BooleanVar(value=settings.get("show_heatmap", False))
         self.palette = self._resolve_palette(self.theme_var.get())
         self.fonts = dict(FONTS_LARGE if self.large_fonts.get() else FONTS_DEFAULT)
         self._configure_style()
@@ -204,6 +204,7 @@ class TicTacToeGUI:
         self.confirm_moves = tk.BooleanVar(value=settings["confirm_moves"])
         self.auto_start = tk.BooleanVar(value=settings["auto_start"])
         self.rotate_logs = tk.BooleanVar(value=settings["rotate_logs"])
+        self.show_heatmap = tk.BooleanVar(value=settings.get("show_heatmap", False))
         self.pending_ai_id: Optional[str] = None
         self.last_move_idx: Optional[int] = None
         self.hint_highlight: Optional[int] = None
@@ -381,6 +382,7 @@ class TicTacToeGUI:
             "animations": True,
             "sound": True,
             "show_coords": False,
+            "show_heatmap": False,
             "compact_sidebar": False,
         }
         data = None
@@ -426,6 +428,7 @@ class TicTacToeGUI:
             "animations": bool(data.get("animations", defaults["animations"])),
             "sound": bool(data.get("sound", defaults["sound"])),
             "show_coords": bool(data.get("show_coords", defaults["show_coords"])),
+            "show_heatmap": bool(data.get("show_heatmap", False)),
             "compact_sidebar": bool(data.get("compact_sidebar", defaults["compact_sidebar"])),
         }
 
@@ -439,6 +442,7 @@ class TicTacToeGUI:
             "animations": self.animations_enabled.get(),
             "sound": self.sound_enabled.get(),
             "show_coords": self.show_coords.get(),
+            "show_heatmap": self.show_heatmap.get(),
             "compact_sidebar": self.compact_sidebar.get(),
         }
         try:
@@ -824,7 +828,6 @@ class TicTacToeGUI:
         ttk.Button(records, text="Achievements", style="Panel.TButton", command=self._show_achievements_popup).grid(row=1, column=0, columnspan=2, sticky="ew", padx=2, pady=(2, 2))
         ttk.Button(records, text="AI vs AI Mode", style="Panel.TButton", command=self._show_ai_vs_ai_popup).grid(row=2, column=0, columnspan=2, sticky="ew", padx=2, pady=(2, 2))
         ttk.Button(records, text="Options", style="Panel.TButton", command=self._show_options_popup).grid(row=3, column=0, columnspan=2, sticky="ew", padx=2, pady=(2, 0))
-        ttk.Checkbutton(records, text="Show AI heatmap", variable=self.show_heatmap, style="App.TCheckbutton", command=self._refresh_board).grid(row=4, column=0, columnspan=2, sticky="w", padx=2, pady=(6, 0))
 
     def _on_diff_change(self, _event=None) -> None:
         self._apply_selection()
@@ -847,6 +850,8 @@ class TicTacToeGUI:
             self.move_listbox.see(tk.END)
 
     def _refresh_heatmap(self) -> None:
+        if getattr(self, "heatmap_locked", False):
+            return
         board = self.session.board
         scores = []
         for idx, cell in enumerate(board):
@@ -890,6 +895,9 @@ class TicTacToeGUI:
             r, c = divmod(idx, 3)
             btn = self.buttons[r][c]
             btn.configure(bg=color_for(val))
+
+        # keep overlay until player makes a move
+        self.heatmap_locked = True
     def _apply_selection(self) -> None:
         level = self.diff_var.get()
         personality = self.personality_var.get() if level == "Normal" else "standard"
@@ -920,7 +928,7 @@ class TicTacToeGUI:
                     btn.configure(fg=self._color("O"), bg=btn.default_bg)
                 else:
                     btn.configure(fg=self._color("TEXT"), bg=btn.default_bg)
-        if self.show_heatmap.get() and not self.session.game_over and getattr(self, "player_turn", True):
+        if self.show_heatmap.get() and not self.session.game_over:
             self._refresh_heatmap()
 
     def _hover_on(self, btn: tk.Button) -> None:
@@ -985,12 +993,16 @@ class TicTacToeGUI:
         self._refresh_scoreboard()
         self.match_var.set(self._match_score_text())
         self.player_turn = True
+        if self.show_heatmap.get():
+            self.heatmap_locked = False
+            self._refresh_heatmap()
 
     def _handle_player_move(self, idx: int) -> None:
         if self.session.game_over or self.session.board[idx] != " " or not getattr(self, "player_turn", True) or getattr(self, "match_over", False):
             return
 
         r, c = divmod(idx, 3)
+        self.heatmap_locked = False
         if self.confirm_moves.get():
             if not messagebox.askyesno("Confirm move", f"Place X at row {r + 1}, column {c + 1}?"):
                 return
@@ -1032,6 +1044,9 @@ class TicTacToeGUI:
         self.status_var.set("Your turn.")
         self._set_status_icon("player")
         self.player_turn = True
+        if self.show_heatmap.get():
+            self.heatmap_locked = False
+            self._refresh_heatmap()
 
     def _update_match_progress(self, round_winner: str) -> None:
         if self.match_over:
