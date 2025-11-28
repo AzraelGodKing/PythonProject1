@@ -5,9 +5,12 @@ The UI is a thin layer over the existing logic: board state, AI moves, and score
 
 import importlib.util
 import json
+import logging
+from logging.handlers import RotatingFileHandler
 import os
 import pathlib
 import tkinter as tk
+import atexit
 from typing import Optional
 from tkinter import messagebox, ttk
 
@@ -153,6 +156,7 @@ class TicTacToeGUI:
         self.root = root
         self.root.title("Tic-Tac-Toe")
         self.settings_path = os.environ.get("GUI_SETTINGS_PATH", SETTINGS_FILE)
+        self.logger = self._init_logger()
         settings = self._load_settings()
         self.large_fonts = tk.BooleanVar(value=settings["large_fonts"])
         self.theme_var = tk.StringVar(value=settings["theme"])
@@ -178,6 +182,8 @@ class TicTacToeGUI:
         self._refresh_scoreboard()
         self._bind_keys()
         self._apply_theme()
+        atexit.register(self._shutdown_logger)
+        self.root.report_callback_exception = self._handle_exception
 
     def _color(self, key: str) -> str:
         return self.palette[key]
@@ -199,6 +205,30 @@ class TicTacToeGUI:
         if theme == "light":
             return dict(PALETTE_LIGHT)
         return dict(PALETTE_DEFAULT)
+
+    def _init_logger(self) -> logging.Logger:
+        os.makedirs(LOG_DIR, exist_ok=True)
+        logger = logging.getLogger("tictactoe_gui")
+        logger.setLevel(logging.INFO)
+        log_path = os.path.join(LOG_DIR, "app.log")
+        handler = RotatingFileHandler(log_path, maxBytes=200_000, backupCount=3, encoding="utf-8", delay=True)
+        fmt = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+        handler.setFormatter(fmt)
+        if not logger.handlers:
+            logger.addHandler(handler)
+        logger.propagate = False
+        return logger
+
+    def _shutdown_logger(self) -> None:
+        logger = getattr(self, "logger", None)
+        if not logger:
+            return
+        for h in list(logger.handlers):
+            try:
+                h.flush()
+                h.close()
+            except Exception:
+                pass
 
     def _build_layout(self) -> None:
         container = ttk.Frame(self.root, padding=10, style="App.TFrame")
@@ -401,6 +431,24 @@ class TicTacToeGUI:
             self.history_label.configure(font=self._font("text"))
             self.log_label.configure(font=self._font("text"))
         self._save_settings()
+
+    def _handle_exception(self, exc_type, exc_value, exc_traceback) -> None:
+        self.logger.exception("Unhandled exception", exc_info=(exc_type, exc_value, exc_traceback))
+        messagebox.showerror("Error", "An unexpected error occurred. See data/logs/app.log for details.")
+
+    def _copy_diagnostics(self) -> None:
+        log_path = os.path.join(LOG_DIR, "app.log")
+        if not os.path.exists(log_path):
+            messagebox.showinfo("Diagnostics", "No log file yet.")
+            return
+        try:
+            with open(log_path, "r", encoding="utf-8") as f:
+                data = f.read()
+            self.root.clipboard_clear()
+            self.root.clipboard_append(data)
+            messagebox.showinfo("Diagnostics", "Copied app log to clipboard.")
+        except OSError:
+            messagebox.showinfo("Diagnostics", "No log file available yet.")
 
     def _toggle_font_size(self) -> None:
         self._apply_theme()
@@ -775,7 +823,9 @@ class TicTacToeGUI:
         theme_box.grid(row=8, column=0, sticky="ew", pady=(0, 4))
         theme_box.bind("<<ComboboxSelected>>", self._on_theme_change)
 
-        ttk.Button(frame, text="Close", style="Panel.TButton", command=popup.destroy).grid(row=9, column=0, sticky="e", pady=(10, 0))
+        ttk.Button(frame, text="Copy diagnostics", style="Panel.TButton", command=self._copy_diagnostics).grid(row=9, column=0, sticky="ew", pady=(6, 0))
+        ttk.Button(frame, text="Close", style="Panel.TButton", command=popup.destroy).grid(row=10, column=0, sticky="e", pady=(10, 0))
+
 
 
 def main() -> None:
