@@ -27,11 +27,12 @@ def show_options_popup(gui) -> None:
     ttk.Checkbutton(frame, text="Animations", variable=gui.animations_enabled, style="App.TCheckbutton", command=gui._toggle_animations).grid(row=5, column=0, sticky="w", pady=2)
     ttk.Checkbutton(frame, text="Sound cues", variable=gui.sound_enabled, style="App.TCheckbutton", command=gui._toggle_sound).grid(row=6, column=0, sticky="w", pady=2)
     ttk.Checkbutton(frame, text="Show board coordinates", variable=gui.show_coords, style="App.TCheckbutton", command=gui._toggle_show_coords).grid(row=7, column=0, sticky="w", pady=2)
+    ttk.Checkbutton(frame, text="Show AI heatmap", variable=gui.show_heatmap, style="App.TCheckbutton", command=gui._toggle_heatmap).grid(row=8, column=0, sticky="w", pady=2)
 
-    ttk.Button(frame, text="No animation/sound preset", style="Panel.TButton", command=gui._disable_motion_sound).grid(row=8, column=0, sticky="ew", pady=(6, 2))
-    ttk.Button(frame, text="Reset toggles to default", style="Panel.TButton", command=gui._reset_toggles).grid(row=9, column=0, sticky="ew", pady=(2, 4))
+    ttk.Button(frame, text="No animation/sound preset", style="Panel.TButton", command=gui._disable_motion_sound).grid(row=9, column=0, sticky="ew", pady=(6, 2))
+    ttk.Button(frame, text="Reset toggles to default", style="Panel.TButton", command=gui._reset_toggles).grid(row=10, column=0, sticky="ew", pady=(2, 4))
 
-    ttk.Label(frame, text="Theme", style="Title.TLabel").grid(row=9, column=0, sticky="w", pady=(8, 2))
+    ttk.Label(frame, text="Theme", style="Title.TLabel").grid(row=11, column=0, sticky="w", pady=(8, 2))
     theme_box = ttk.Combobox(
         frame,
         textvariable=gui.theme_var,

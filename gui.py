@@ -173,6 +173,7 @@ class TicTacToeGUI:
         self.animations_enabled = tk.BooleanVar(value=settings["animations"])
         self.sound_enabled = tk.BooleanVar(value=settings["sound"])
         self.show_coords = tk.BooleanVar(value=settings["show_coords"])
+        self.show_heatmap = tk.BooleanVar(value=settings.get("show_heatmap", False))
         self.palette = self._resolve_palette(self.theme_var.get())
         self.fonts = dict(FONTS_LARGE if self.large_fonts.get() else FONTS_DEFAULT)
         self._configure_style()
@@ -188,6 +189,7 @@ class TicTacToeGUI:
         self.achievements_popup: Optional[tk.Toplevel] = None
         self.ai_vs_ai_popup: Optional[tk.Toplevel] = None
         self.ai_running = False
+        self.ai_paused = False
         self.achievements_filter_earned = tk.BooleanVar(value=False)
         self.compact_sidebar = tk.BooleanVar(value=settings.get("compact_sidebar", False))
         self.match_winner = ""
@@ -202,6 +204,7 @@ class TicTacToeGUI:
         self.confirm_moves = tk.BooleanVar(value=settings["confirm_moves"])
         self.auto_start = tk.BooleanVar(value=settings["auto_start"])
         self.rotate_logs = tk.BooleanVar(value=settings["rotate_logs"])
+        self.show_heatmap = tk.BooleanVar(value=settings.get("show_heatmap", False))
         self.pending_ai_id: Optional[str] = None
         self.last_move_idx: Optional[int] = None
         self.hint_highlight: Optional[int] = None
@@ -379,6 +382,7 @@ class TicTacToeGUI:
             "animations": True,
             "sound": True,
             "show_coords": False,
+            "show_heatmap": False,
             "compact_sidebar": False,
         }
         data = None
@@ -424,6 +428,7 @@ class TicTacToeGUI:
             "animations": bool(data.get("animations", defaults["animations"])),
             "sound": bool(data.get("sound", defaults["sound"])),
             "show_coords": bool(data.get("show_coords", defaults["show_coords"])),
+            "show_heatmap": bool(data.get("show_heatmap", False)),
             "compact_sidebar": bool(data.get("compact_sidebar", defaults["compact_sidebar"])),
         }
 
@@ -437,6 +442,7 @@ class TicTacToeGUI:
             "animations": self.animations_enabled.get(),
             "sound": self.sound_enabled.get(),
             "show_coords": self.show_coords.get(),
+            "show_heatmap": self.show_heatmap.get(),
             "compact_sidebar": self.compact_sidebar.get(),
         }
         try:
@@ -597,6 +603,11 @@ class TicTacToeGUI:
         self._save_settings()
 
     def _toggle_show_coords(self) -> None:
+        self._refresh_board()
+        self._save_settings()
+
+    def _toggle_heatmap(self) -> None:
+        self.heatmap_locked = False
         self._refresh_board()
         self._save_settings()
 
@@ -843,6 +854,55 @@ class TicTacToeGUI:
         if self.session.moves:
             self.move_listbox.see(tk.END)
 
+    def _refresh_heatmap(self) -> None:
+        if getattr(self, "heatmap_locked", False):
+            return
+        board = self.session.board
+        scores = []
+        for idx, cell in enumerate(board):
+            if cell != " ":
+                scores.append(None)
+                continue
+            board[idx] = "O"
+            try:
+                score = module._minimax(board, False, 0)  # type: ignore[attr-defined]
+            except Exception:
+                score = 0
+            board[idx] = " "
+            scores.append(score)
+
+        numeric_scores = [s for s in scores if s is not None]
+        if not numeric_scores:
+            return
+        max_score = max(numeric_scores)
+        min_score = min(numeric_scores)
+        span = max_score - min_score if max_score != min_score else 1
+
+        def color_for(val: int) -> str:
+            norm = (val - min_score) / span
+            # blend from muted to accent for better-for-AI moves
+            def lerp(a, b):
+                return int(a + (b - a) * norm)
+
+            def to_rgb(hex_color: str):
+                return tuple(int(hex_color[i : i + 2], 16) for i in (1, 3, 5))
+
+            base = to_rgb(self._color("CELL"))
+            accent = to_rgb(self._color("ACCENT"))
+            r = lerp(base[0], accent[0])
+            g = lerp(base[1], accent[1])
+            b = lerp(base[2], accent[2])
+            return f"#{r:02x}{g:02x}{b:02x}"
+
+        for idx, val in enumerate(scores):
+            if val is None:
+                continue
+            r, c = divmod(idx, 3)
+            btn = self.buttons[r][c]
+            btn.configure(bg=color_for(val))
+
+        # keep overlay until player makes a move
+        self.heatmap_locked = True
     def _apply_selection(self) -> None:
         level = self.diff_var.get()
         personality = self.personality_var.get() if level == "Normal" else "standard"
@@ -873,6 +933,8 @@ class TicTacToeGUI:
                     btn.configure(fg=self._color("O"), bg=btn.default_bg)
                 else:
                     btn.configure(fg=self._color("TEXT"), bg=btn.default_bg)
+        if self.show_heatmap.get() and not self.session.game_over:
+            self._refresh_heatmap()
 
     def _hover_on(self, btn: tk.Button) -> None:
         if not self.animations_enabled.get():
@@ -936,12 +998,16 @@ class TicTacToeGUI:
         self._refresh_scoreboard()
         self.match_var.set(self._match_score_text())
         self.player_turn = True
+        if self.show_heatmap.get():
+            self.heatmap_locked = False
+            self._refresh_heatmap()
 
     def _handle_player_move(self, idx: int) -> None:
         if self.session.game_over or self.session.board[idx] != " " or not getattr(self, "player_turn", True) or getattr(self, "match_over", False):
             return
 
         r, c = divmod(idx, 3)
+        self.heatmap_locked = False
         if self.confirm_moves.get():
             if not messagebox.askyesno("Confirm move", f"Place X at row {r + 1}, column {c + 1}?"):
                 return
@@ -983,6 +1049,9 @@ class TicTacToeGUI:
         self.status_var.set("Your turn.")
         self._set_status_icon("player")
         self.player_turn = True
+        if self.show_heatmap.get():
+            self.heatmap_locked = False
+            self._refresh_heatmap()
 
     def _update_match_progress(self, round_winner: str) -> None:
         if self.match_over:
