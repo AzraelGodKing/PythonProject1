@@ -155,6 +155,8 @@ class TicTacToeGUI:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.root.title("Tic-Tac-Toe")
+        self.root.geometry("1100x800")
+        self.root.minsize(980, 720)
         self.settings_path = os.environ.get("GUI_SETTINGS_PATH", SETTINGS_FILE)
         self.logger = self._init_logger()
         settings = self._load_settings()
@@ -826,78 +828,49 @@ class TicTacToeGUI:
         popup.protocol("WM_DELETE_WINDOW", on_close)
 
     def _compute_session_achievements(self) -> list:
-        # Parse history into counts per difficulty
-        def diff_token(label: str) -> str:
-            return label.split(" ", 1)[0]
+        # Lifetime achievements based on persisted scoreboard
+        sb = self.session.scoreboard
+        total_wins = sum(entry.get("X", 0) for entry in sb.values())
+        total_games = sum(entry.get("X", 0) + entry.get("O", 0) + entry.get("Draw", 0) for entry in sb.values())
+        total_draws = sum(entry.get("Draw", 0) for entry in sb.values())
 
-        total_wins = sum(1 for diff, res, _ in self.session.history if res == "X")
-        total_games = len(self.session.history)
-        total_draws = sum(1 for _, res, _ in self.session.history if res == "Draw")
-        hard_wins = sum(1 for diff, res, _ in self.session.history if diff_token(diff) == "Hard" and res == "X")
-        normal_wins = sum(1 for diff, res, _ in self.session.history if diff_token(diff) == "Normal" and res == "X")
-        easy_wins = sum(1 for diff, res, _ in self.session.history if diff_token(diff) == "Easy" and res == "X")
-        hard_draws = sum(1 for diff, res, _ in self.session.history if diff_token(diff) == "Hard" and res == "Draw")
-        normal_draws = sum(1 for diff, res, _ in self.session.history if diff_token(diff) == "Normal" and res == "Draw")
-        easy_draws = sum(1 for diff, res, _ in self.session.history if diff_token(diff) == "Easy" and res == "Draw")
+        hard = sb.get("Hard", module.DEFAULT_SCORE)
+        normal = sb.get("Normal", module.DEFAULT_SCORE)
+        easy = sb.get("Easy", module.DEFAULT_SCORE)
 
-        streak = 0
-        best_streak = 0
-        for _, res, _ in self.session.history:
-            if res == "X":
-                streak += 1
-                best_streak = max(best_streak, streak)
-            else:
-                streak = 0
-
-        last5 = self.session.history[-5:]
-        last10 = self.session.history[-10:]
-        recent_hard_wins = sum(1 for diff, res, _ in last5 if diff_token(diff) == "Hard" and res == "X")
-        recent_normal_wins = sum(1 for diff, res, _ in last5 if diff_token(diff) == "Normal" and res == "X")
-        recent_easy_wins = sum(1 for diff, res, _ in last5 if diff_token(diff) == "Easy" and res == "X")
-        recent_draws = sum(1 for _, res, _ in last5 if res == "Draw")
-
-        recent_streak = 0
-        best_recent_streak = 0
-        for _, res, _ in last10:
-            if res == "X":
-                recent_streak += 1
-                best_recent_streak = max(best_recent_streak, recent_streak)
-            else:
-                recent_streak = 0
+        hard_wins = hard.get("X", 0)
+        normal_wins = normal.get("X", 0)
+        easy_wins = easy.get("X", 0)
+        hard_draws = hard.get("Draw", 0)
+        normal_draws = normal.get("Draw", 0)
+        easy_draws = easy.get("Draw", 0)
 
         defs = [
             # Wins & games
             ("First win!", total_wins >= 1),
-            ("Win 5 games this session.", total_wins >= 5),
-            ("Win 10 games this session.", total_wins >= 10),
-            ("Win 20 games this session.", total_wins >= 20),
-            ("Play 10 games this session.", total_games >= 10),
-            ("Play 25 games this session.", total_games >= 25),
+            ("Win 5 games lifetime.", total_wins >= 5),
+            ("Win 10 games lifetime.", total_wins >= 10),
+            ("Win 25 games lifetime.", total_wins >= 25),
+            ("Win 50 games lifetime.", total_wins >= 50),
+            ("Play 25 games lifetime.", total_games >= 25),
+            ("Play 50 games lifetime.", total_games >= 50),
             # Difficulty-specific wins
-            ("Easy warmup (3 wins).", easy_wins >= 3),
-            ("Easy veteran (8 wins).", easy_wins >= 8),
-            ("Normal contender (3 wins).", normal_wins >= 3),
-            ("Normal champ (8 wins).", normal_wins >= 8),
+            ("Easy warmup (5 wins).", easy_wins >= 5),
+            ("Easy veteran (15 wins).", easy_wins >= 15),
+            ("Normal contender (5 wins).", normal_wins >= 5),
+            ("Normal champ (15 wins).", normal_wins >= 15),
             ("Hard cracked once.", hard_wins >= 1),
-            ("Hard regular (3 wins).", hard_wins >= 3),
-            ("Hard seasoned (5 wins).", hard_wins >= 5),
+            ("Hard regular (5 wins).", hard_wins >= 5),
+            ("Hard seasoned (10 wins).", hard_wins >= 10),
             # Draws
-            ("Draw collector (3 draws).", total_draws >= 3),
-            ("Draw connoisseur (8 draws).", total_draws >= 8),
-            ("Hard stalemates (3 draws).", hard_draws >= 3),
-            ("Normal stalemates (5 draws).", normal_draws >= 5),
-            ("Easy stalemates (3 draws).", easy_draws >= 3),
-            # Streaks
-            (f"Hot streak: {best_streak} wins in a row.", best_streak >= 3),
-            ("On fire: 5 wins in a row.", best_streak >= 5),
-            (f"Recent streak: {best_recent_streak} in last 10.", best_recent_streak >= 3),
-            # Recent performance
-            ("Recent Hard win (last 5).", recent_hard_wins >= 1),
-            ("Recent Normal surge (2 wins in last 5).", recent_normal_wins >= 2),
-            ("Easy sweep (3 wins in last 5).", recent_easy_wins >= 3),
-            ("Draw-heavy run (2 draws in last 5).", recent_draws >= 2),
+            ("Draw collector (5 draws).", total_draws >= 5),
+            ("Draw connoisseur (15 draws).", total_draws >= 15),
+            ("Hard stalemates (5 draws).", hard_draws >= 5),
+            ("Normal stalemates (7 draws).", normal_draws >= 7),
+            ("Easy stalemates (5 draws).", easy_draws >= 5),
             # Mixed goals
             ("All-rounder: wins on Easy, Normal, Hard.", hard_wins >= 1 and normal_wins >= 1 and easy_wins >= 1),
+            ("Balanced player: 10+ wins on Easy and Normal.", easy_wins >= 10 and normal_wins >= 10),
         ]
 
         earned = [name for name, ok in defs if ok]
