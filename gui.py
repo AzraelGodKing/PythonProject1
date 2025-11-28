@@ -5,6 +5,7 @@ The UI is a thin layer over the existing logic: board state, AI moves, and score
 
 import importlib.util
 import json
+import os
 import pathlib
 import tkinter as tk
 from typing import Optional
@@ -38,6 +39,28 @@ PALETTE_HIGH_CONTRAST = {
     "BTN": "#ff9800",
     "O": "#ff5722",
     "CELL": "#1f1f1f",
+}
+
+PALETTE_COLORBLIND = {
+    "BG": "#0c1021",
+    "PANEL": "#182033",
+    "ACCENT": "#ffd166",
+    "TEXT": "#f4f4f4",
+    "MUTED": "#c0c6d4",
+    "BTN": "#ef476f",
+    "O": "#06d6a0",
+    "CELL": "#1f2a3d",
+}
+
+PALETTE_LIGHT = {
+    "BG": "#f6f8fb",
+    "PANEL": "#e1e7f2",
+    "ACCENT": "#0077ff",
+    "TEXT": "#111827",
+    "MUTED": "#4b5563",
+    "BTN": "#2563eb",
+    "O": "#f97316",
+    "CELL": "#ffffff",
 }
 
 FONTS_DEFAULT = {
@@ -94,10 +117,13 @@ class TicTacToeGUI:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.root.title("Tic-Tac-Toe")
+        self.settings_path = os.environ.get("GUI_SETTINGS_PATH", SETTINGS_FILE)
         settings = self._load_settings()
-        self.high_contrast = tk.BooleanVar(value=settings["high_contrast"])
         self.large_fonts = tk.BooleanVar(value=settings["large_fonts"])
-        self.palette = dict(PALETTE_HIGH_CONTRAST if self.high_contrast.get() else PALETTE_DEFAULT)
+        self.theme_var = tk.StringVar(value=settings["theme"])
+        self.animations_enabled = tk.BooleanVar(value=settings["animations"])
+        self.sound_enabled = tk.BooleanVar(value=settings["sound"])
+        self.palette = self._resolve_palette(self.theme_var.get())
         self.fonts = dict(FONTS_LARGE if self.large_fonts.get() else FONTS_DEFAULT)
         self._configure_style()
         self.session = GameSession()
@@ -123,6 +149,15 @@ class TicTacToeGUI:
 
     def _font(self, key: str):
         return self.fonts[key]
+
+    def _resolve_palette(self, theme: str) -> dict:
+        if theme == "high_contrast":
+            return dict(PALETTE_HIGH_CONTRAST)
+        if theme == "colorblind":
+            return dict(PALETTE_COLORBLIND)
+        if theme == "light":
+            return dict(PALETTE_LIGHT)
+        return dict(PALETTE_DEFAULT)
 
     def _build_layout(self) -> None:
         container = ttk.Frame(self.root, padding=10, style="App.TFrame")
@@ -158,20 +193,31 @@ class TicTacToeGUI:
             "confirm_moves": True,
             "auto_start": False,
             "rotate_logs": True,
-            "high_contrast": False,
+            "theme": "default",
             "large_fonts": False,
+            "animations": True,
+            "sound": True,
         }
         try:
-            with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+            with open(self.settings_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             if not isinstance(data, dict):
                 return defaults
+            # backward compatibility: high_contrast flag becomes theme
+            theme_val = data.get("theme")
+            if theme_val not in {"default", "high_contrast", "colorblind", "light"}:
+                if bool(data.get("high_contrast", False)):
+                    theme_val = "high_contrast"
+                else:
+                    theme_val = defaults["theme"]
             return {
                 "confirm_moves": bool(data.get("confirm_moves", defaults["confirm_moves"])),
                 "auto_start": bool(data.get("auto_start", defaults["auto_start"])),
                 "rotate_logs": bool(data.get("rotate_logs", defaults["rotate_logs"])),
-                "high_contrast": bool(data.get("high_contrast", defaults["high_contrast"])),
+                "theme": theme_val,
                 "large_fonts": bool(data.get("large_fonts", defaults["large_fonts"])),
+                "animations": bool(data.get("animations", defaults["animations"])),
+                "sound": bool(data.get("sound", defaults["sound"])),
             }
         except (OSError, json.JSONDecodeError):
             return defaults
@@ -181,14 +227,17 @@ class TicTacToeGUI:
             "confirm_moves": self.confirm_moves.get(),
             "auto_start": self.auto_start.get(),
             "rotate_logs": self.rotate_logs.get(),
-            "high_contrast": self.high_contrast.get(),
+            "theme": self.theme_var.get(),
             "large_fonts": self.large_fonts.get(),
+            "animations": self.animations_enabled.get(),
+            "sound": self.sound_enabled.get(),
         }
         try:
-            with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+            with open(self.settings_path, "w", encoding="utf-8") as f:
                 json.dump(data, f)
-        except OSError:
-            pass
+        except OSError as exc:
+            # Show a non-blocking hint if settings cannot be saved.
+            self.status_var.set(f"Could not save settings ({exc}).")
 
     def _configure_style(self) -> None:
         self.root.configure(bg=self._color("BG"))
@@ -237,9 +286,27 @@ class TicTacToeGUI:
             background=self._color("PANEL"),
             foreground=self._color("TEXT"),
         )
+        style.map(
+            "App.TCombobox",
+            fieldbackground=[
+                ("disabled", self._color("PANEL")),
+                ("readonly", self._color("PANEL")),
+                ("active", self._color("PANEL")),
+            ],
+            background=[
+                ("disabled", self._color("PANEL")),
+                ("readonly", self._color("PANEL")),
+                ("active", self._color("PANEL")),
+            ],
+            foreground=[
+                ("disabled", self._color("TEXT")),
+                ("readonly", self._color("TEXT")),
+                ("active", self._color("TEXT")),
+            ],
+        )
 
     def _apply_theme(self) -> None:
-        self.palette = dict(PALETTE_HIGH_CONTRAST if self.high_contrast.get() else PALETTE_DEFAULT)
+        self.palette = self._resolve_palette(self.theme_var.get())
         self.fonts = dict(FONTS_LARGE if self.large_fonts.get() else FONTS_DEFAULT)
         self._configure_style()
 
@@ -264,9 +331,6 @@ class TicTacToeGUI:
             self.log_label.configure(font=self._font("text"))
         self._save_settings()
 
-    def _toggle_contrast(self) -> None:
-        self._apply_theme()
-
     def _toggle_font_size(self) -> None:
         self._apply_theme()
 
@@ -278,6 +342,15 @@ class TicTacToeGUI:
 
     def _toggle_rotate_logs(self) -> None:
         self._save_settings()
+
+    def _toggle_animations(self) -> None:
+        self._save_settings()
+
+    def _toggle_sound(self) -> None:
+        self._save_settings()
+
+    def _on_theme_change(self, _event=None) -> None:
+        self._apply_theme()
 
     def _build_controls(self, parent: tk.Widget) -> None:
         top = ttk.Frame(parent, padding=10, style="App.TFrame")
@@ -373,22 +446,25 @@ class TicTacToeGUI:
         self.log_label = ttk.Label(info, textvariable=self.log_path_var, style="Muted.TLabel", font=self._font("text"), wraplength=260, justify="left")
         self.log_label.grid(row=6, column=0, sticky="w", pady=(4, 8))
 
+        ttk.Label(info, text="Shortcuts", style="Title.TLabel").grid(row=7, column=0, sticky="w")
+        ttk.Label(
+            info,
+            text="Moves: 1-9  |  New: N/Ctrl+N",
+            style="Muted.TLabel",
+            font=self._font("text"),
+            wraplength=260,
+            justify="left",
+        ).grid(row=8, column=0, sticky="w", pady=(2, 8))
+
         btn_row = ttk.Frame(info, style="Panel.TFrame")
-        btn_row.grid(row=7, column=0, sticky="ew", pady=(4, 0))
+        btn_row.grid(row=9, column=0, sticky="ew", pady=(4, 0))
         btn_row.columnconfigure((0, 1), weight=1)
         ttk.Button(btn_row, text="Hint", style="Panel.TButton", command=self._show_hint).grid(row=0, column=0, sticky="ew", padx=3)
         ttk.Button(btn_row, text="Undo Move", style="Panel.TButton", command=self._undo_move).grid(row=0, column=1, sticky="ew", padx=3)
 
-        opts = ttk.Frame(info, style="Panel.TFrame")
-        opts.grid(row=8, column=0, sticky="ew", pady=(8, 0))
-        ttk.Checkbutton(opts, text="Require confirmations", variable=self.confirm_moves, style="App.TCheckbutton", command=self._toggle_confirm).grid(row=0, column=0, sticky="w", pady=2)
-        ttk.Checkbutton(opts, text="Auto-start next game", variable=self.auto_start, style="App.TCheckbutton", command=self._toggle_auto_start).grid(row=1, column=0, sticky="w", pady=2)
-        ttk.Checkbutton(opts, text="Rotate history filenames", variable=self.rotate_logs, style="App.TCheckbutton", command=self._toggle_rotate_logs).grid(row=2, column=0, sticky="w", pady=2)
-        ttk.Checkbutton(opts, text="High contrast", variable=self.high_contrast, style="App.TCheckbutton", command=self._toggle_contrast).grid(row=3, column=0, sticky="w", pady=2)
-        ttk.Checkbutton(opts, text="Larger fonts", variable=self.large_fonts, style="App.TCheckbutton", command=self._toggle_font_size).grid(row=4, column=0, sticky="w", pady=2)
-
-        ttk.Button(info, text="View history", style="Panel.TButton", command=self._view_history_popup).grid(row=9, column=0, sticky="ew", pady=(10, 2))
-        ttk.Button(info, text="Save history now", style="Panel.TButton", command=self._save_history_now).grid(row=10, column=0, sticky="ew", pady=(2, 0))
+        ttk.Button(info, text="Options", style="Panel.TButton", command=self._show_options_popup).grid(row=10, column=0, sticky="ew", pady=(8, 2))
+        ttk.Button(info, text="View history", style="Panel.TButton", command=self._view_history_popup).grid(row=11, column=0, sticky="ew", pady=(6, 2))
+        ttk.Button(info, text="Save history now", style="Panel.TButton", command=self._save_history_now).grid(row=12, column=0, sticky="ew", pady=(2, 0))
 
     def _on_diff_change(self, _event=None) -> None:
         self._apply_selection()
@@ -425,10 +501,14 @@ class TicTacToeGUI:
                     btn.configure(fg=self._color("TEXT"), bg=btn.default_bg)
 
     def _hover_on(self, btn: tk.Button) -> None:
+        if not self.animations_enabled.get():
+            return
         if btn["text"] == " ":
             btn.configure(bg=self._color("ACCENT"), fg=self._color("BG"), relief="solid")
 
     def _hover_off(self, btn: tk.Button) -> None:
+        if not self.animations_enabled.get():
+            return
         val = btn["text"]
         if val == "X":
             btn.configure(bg=btn.default_bg, fg=self._color("ACCENT"), relief="raised")
@@ -512,8 +592,11 @@ class TicTacToeGUI:
         self.last_move_idx = None
         if self.auto_start.get():
             self.root.after(600, self.start_new_game)
+        self._play_sound()
 
     def _flash_ai_move(self, idx: int) -> None:
+        if not self.animations_enabled.get():
+            return
         r, c = divmod(idx, 3)
         btn = self.buttons[r][c]
         original = btn.cget("bg")
@@ -575,6 +658,45 @@ class TicTacToeGUI:
         self.session.last_history_path = path
         self.log_path_var.set(f"History file: {path}")
         self.status_var.set("History saved.")
+
+    def _play_sound(self) -> None:
+        if not self.sound_enabled.get():
+            return
+        try:
+            self.root.bell()
+        except tk.TclError:
+            pass
+
+    def _show_options_popup(self) -> None:
+        popup = tk.Toplevel(self.root)
+        popup.title("Options")
+        popup.configure(bg=self._color("BG"))
+        frame = ttk.Frame(popup, padding=12, style="App.TFrame")
+        frame.grid(row=0, column=0, sticky="nsew")
+        popup.columnconfigure(0, weight=1)
+        popup.rowconfigure(0, weight=1)
+
+        ttk.Label(frame, text="Options", style="Title.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 6))
+
+        ttk.Checkbutton(frame, text="Require confirmations", variable=self.confirm_moves, style="App.TCheckbutton", command=self._toggle_confirm).grid(row=1, column=0, sticky="w", pady=2)
+        ttk.Checkbutton(frame, text="Auto-start next game", variable=self.auto_start, style="App.TCheckbutton", command=self._toggle_auto_start).grid(row=2, column=0, sticky="w", pady=2)
+        ttk.Checkbutton(frame, text="Rotate history filenames", variable=self.rotate_logs, style="App.TCheckbutton", command=self._toggle_rotate_logs).grid(row=3, column=0, sticky="w", pady=2)
+        ttk.Checkbutton(frame, text="Larger fonts", variable=self.large_fonts, style="App.TCheckbutton", command=self._toggle_font_size).grid(row=4, column=0, sticky="w", pady=2)
+        ttk.Checkbutton(frame, text="Animations", variable=self.animations_enabled, style="App.TCheckbutton", command=self._toggle_animations).grid(row=5, column=0, sticky="w", pady=2)
+        ttk.Checkbutton(frame, text="Sound cues", variable=self.sound_enabled, style="App.TCheckbutton", command=self._toggle_sound).grid(row=6, column=0, sticky="w", pady=2)
+
+        ttk.Label(frame, text="Theme", style="Title.TLabel").grid(row=7, column=0, sticky="w", pady=(8, 2))
+        theme_box = ttk.Combobox(
+            frame,
+            textvariable=self.theme_var,
+            state="readonly",
+            values=["default", "high_contrast", "colorblind", "light"],
+            style="App.TCombobox",
+        )
+        theme_box.grid(row=8, column=0, sticky="ew", pady=(0, 4))
+        theme_box.bind("<<ComboboxSelected>>", self._on_theme_change)
+
+        ttk.Button(frame, text="Close", style="Panel.TButton", command=popup.destroy).grid(row=9, column=0, sticky="e", pady=(10, 0))
 
 
 def main() -> None:
