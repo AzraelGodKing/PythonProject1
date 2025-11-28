@@ -606,6 +606,11 @@ class TicTacToeGUI:
         self._refresh_board()
         self._save_settings()
 
+    def _toggle_heatmap(self) -> None:
+        self.heatmap_locked = False
+        self._refresh_board()
+        self._save_settings()
+
     def _disable_motion_sound(self) -> None:
         self.animations_enabled.set(False)
         self.sound_enabled.set(False)
