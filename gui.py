@@ -43,17 +43,6 @@ PALETTE_HIGH_CONTRAST = {
     "CELL": "#1f1f1f",
 }
 
-PALETTE_COLORBLIND = {
-    "BG": "#0c1021",
-    "PANEL": "#182033",
-    "ACCENT": "#ffd166",
-    "TEXT": "#f4f4f4",
-    "MUTED": "#c0c6d4",
-    "BTN": "#ef476f",
-    "O": "#06d6a0",
-    "CELL": "#1f2a3d",
-}
-
 PALETTE_LIGHT = {
     "BG": "#f6f8fb",
     "PANEL": "#e1e7f2",
@@ -63,6 +52,50 @@ PALETTE_LIGHT = {
     "BTN": "#2563eb",
     "O": "#f97316",
     "CELL": "#ffffff",
+}
+
+PALETTE_PROTAN = {
+    "BG": "#0f1627",
+    "PANEL": "#192339",
+    "ACCENT": "#f2c14e",
+    "TEXT": "#e6edf5",
+    "MUTED": "#c0cad8",
+    "BTN": "#f08a5d",
+    "O": "#00b7a8",
+    "CELL": "#1f2c40",
+}
+
+PALETTE_DEUTAN = {
+    "BG": "#0e1524",
+    "PANEL": "#1b273a",
+    "ACCENT": "#ffc857",
+    "TEXT": "#edf2f7",
+    "MUTED": "#cbd5e1",
+    "BTN": "#ef476f",
+    "O": "#06d6a0",
+    "CELL": "#1f2c42",
+}
+
+PALETTE_TRITAN = {
+    "BG": "#0f172a",
+    "PANEL": "#1c2540",
+    "ACCENT": "#f9c80e",
+    "TEXT": "#e5ecf5",
+    "MUTED": "#cbd5e1",
+    "BTN": "#a4508b",
+    "O": "#2dd4bf",
+    "CELL": "#22314f",
+}
+
+PALETTE_MONO = {
+    "BG": "#0f1115",
+    "PANEL": "#1b1f26",
+    "ACCENT": "#d1d5db",
+    "TEXT": "#f3f4f6",
+    "MUTED": "#9ca3af",
+    "BTN": "#e5e7eb",
+    "O": "#d1d5db",
+    "CELL": "#222630",
 }
 
 FONTS_DEFAULT = {
@@ -155,8 +188,14 @@ class TicTacToeGUI:
     def _resolve_palette(self, theme: str) -> dict:
         if theme == "high_contrast":
             return dict(PALETTE_HIGH_CONTRAST)
-        if theme == "colorblind":
-            return dict(PALETTE_COLORBLIND)
+        if theme == "colorblind_protan":
+            return dict(PALETTE_PROTAN)
+        if theme == "colorblind_deutan":
+            return dict(PALETTE_DEUTAN)
+        if theme == "colorblind_tritan":
+            return dict(PALETTE_TRITAN)
+        if theme == "monochrome":
+            return dict(PALETTE_MONO)
         if theme == "light":
             return dict(PALETTE_LIGHT)
         return dict(PALETTE_DEFAULT)
@@ -220,7 +259,16 @@ class TicTacToeGUI:
             return defaults
         # backward compatibility: high_contrast flag becomes theme
         theme_val = data.get("theme")
-        if theme_val not in {"default", "high_contrast", "colorblind", "light"}:
+        allowed_themes = {
+            "default",
+            "high_contrast",
+            "colorblind_protan",
+            "colorblind_deutan",
+            "colorblind_tritan",
+            "monochrome",
+            "light",
+        }
+        if theme_val not in allowed_themes:
             if bool(data.get("high_contrast", False)):
                 theme_val = "high_contrast"
             else:
@@ -713,7 +761,15 @@ class TicTacToeGUI:
             frame,
             textvariable=self.theme_var,
             state="readonly",
-            values=["default", "high_contrast", "colorblind", "light"],
+            values=[
+                "default",
+                "high_contrast",
+                "colorblind_protan",
+                "colorblind_deutan",
+                "colorblind_tritan",
+                "monochrome",
+                "light",
+            ],
             style="App.TCombobox",
         )
         theme_box.grid(row=8, column=0, sticky="ew", pady=(0, 4))
