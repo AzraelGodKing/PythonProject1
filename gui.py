@@ -13,7 +13,7 @@ from tkinter import messagebox, ttk
 
 
 MODULE_PATH = pathlib.Path(__file__).with_name("tic-tac-toe.py")
-LOG_DIR = "logs"
+LOG_DIR = os.path.join("data", "logs")
 SETTINGS_FILE = "gui_settings.json"
 SETTINGS_BACKUP = os.path.join(LOG_DIR, "gui_settings.json.bak")
 spec = importlib.util.spec_from_file_location("tictactoe_module_gui", MODULE_PATH)
