@@ -11,6 +11,7 @@ import os
 import pathlib
 import tkinter as tk
 import atexit
+import math
 from typing import Optional
 from tkinter import messagebox, ttk
 
@@ -123,6 +124,9 @@ class GameSession:
         self.board = [" "] * 9
         self.game_over = False
         self.history = []
+        loaded_history = module.load_session_history_from_file()
+        if loaded_history:
+            self.history = [(d, r, ts) for d, r, ts, _ in loaded_history]
         self.last_history_path: str = module.HISTORY_FILE
 
     def set_difficulty(self, level: str, personality: str = "standard") -> None:
@@ -164,6 +168,7 @@ class TicTacToeGUI:
         self.theme_var = tk.StringVar(value=settings["theme"])
         self.animations_enabled = tk.BooleanVar(value=settings["animations"])
         self.sound_enabled = tk.BooleanVar(value=settings["sound"])
+        self.show_coords = tk.BooleanVar(value=settings["show_coords"])
         self.palette = self._resolve_palette(self.theme_var.get())
         self.fonts = dict(FONTS_LARGE if self.large_fonts.get() else FONTS_DEFAULT)
         self._configure_style()
@@ -175,6 +180,10 @@ class TicTacToeGUI:
         self.options_popup: Optional[tk.Toplevel] = None
         self.history_popup: Optional[tk.Toplevel] = None
         self.achievements_popup: Optional[tk.Toplevel] = None
+        self.achievements_filter_earned = tk.BooleanVar(value=False)
+        self.compact_sidebar = tk.BooleanVar(value=settings.get("compact_sidebar", False))
+        self.match_winner = ""
+        self.tooltips = []
 
         self.status_var = tk.StringVar(value="Choose a difficulty and start a game.")
         self.score_var = tk.StringVar()
@@ -195,6 +204,8 @@ class TicTacToeGUI:
         atexit.register(self._shutdown_logger)
         self.root.report_callback_exception = self._handle_exception
         self.player_turn = True
+        self._build_menu()
+        self._apply_compact_layout()
 
     def _color(self, key: str) -> str:
         return self.palette[key]
@@ -218,7 +229,10 @@ class TicTacToeGUI:
         return dict(PALETTE_DEFAULT)
 
     def _match_score_text(self) -> str:
-        return f"Target {self.match_target}: X={self.match_wins['X']}  O={self.match_wins['O']}  Draws={self.match_wins['Draw']}"
+        base = f"Target {self.match_target}: X={self.match_wins['X']}  O={self.match_wins['O']}  Draws={self.match_wins['Draw']}"
+        if self.match_winner:
+            base += f"  | Winner: {self.match_winner}"
+        return base
 
     def _parse_match_length(self) -> int:
         text = self.match_length_var.get().strip()
@@ -236,8 +250,13 @@ class TicTacToeGUI:
         self.match_target = (self.match_length // 2) + 1
         self.match_wins = {"X": 0, "O": 0, "Draw": 0}
         self.match_over = False
+        self.match_winner = ""
         self.match_var.set(self._match_score_text())
         self.start_new_game()
+
+    def _set_match_preset(self, val: int) -> None:
+        self.match_length_var.set(str(val))
+        self._new_match()
 
     def _init_logger(self) -> logging.Logger:
         os.makedirs(LOG_DIR, exist_ok=True)
@@ -292,6 +311,25 @@ class TicTacToeGUI:
         self.root.bind("n", lambda _e: self.start_new_game())
         self.root.bind("N", lambda _e: self.start_new_game())
 
+    def _build_menu(self) -> None:
+        menubar = tk.Menu(self.root)
+        game_menu = tk.Menu(menubar, tearoff=0)
+        game_menu.add_command(label="New Game", command=self.start_new_game, accelerator="Ctrl+N")
+        game_menu.add_command(label="New Match", command=self._new_match)
+        game_menu.add_separator()
+        game_menu.add_command(label="Save History", command=self._save_history_now)
+        game_menu.add_separator()
+        game_menu.add_command(label="Exit", command=self.root.quit)
+        menubar.add_cascade(label="Game", menu=game_menu)
+
+        view_menu = tk.Menu(menubar, tearoff=0)
+        view_menu.add_command(label="Achievements", command=self._show_achievements_popup)
+        view_menu.add_command(label="History", command=self._view_history_popup)
+        view_menu.add_command(label="Options", command=self._show_options_popup)
+        menubar.add_cascade(label="View", menu=view_menu)
+
+        self.root.config(menu=menubar)
+
     def _load_settings(self) -> dict:
         defaults = {
             "confirm_moves": True,
@@ -301,6 +339,8 @@ class TicTacToeGUI:
             "large_fonts": False,
             "animations": True,
             "sound": True,
+            "show_coords": False,
+            "compact_sidebar": False,
         }
         data = None
         try:
@@ -344,6 +384,8 @@ class TicTacToeGUI:
             "large_fonts": bool(data.get("large_fonts", defaults["large_fonts"])),
             "animations": bool(data.get("animations", defaults["animations"])),
             "sound": bool(data.get("sound", defaults["sound"])),
+            "show_coords": bool(data.get("show_coords", defaults["show_coords"])),
+            "compact_sidebar": bool(data.get("compact_sidebar", defaults["compact_sidebar"])),
         }
 
     def _save_settings(self) -> None:
@@ -355,6 +397,8 @@ class TicTacToeGUI:
             "large_fonts": self.large_fonts.get(),
             "animations": self.animations_enabled.get(),
             "sound": self.sound_enabled.get(),
+            "show_coords": self.show_coords.get(),
+            "compact_sidebar": self.compact_sidebar.get(),
         }
         try:
             # write backup first
@@ -443,6 +487,8 @@ class TicTacToeGUI:
         self.palette = self._resolve_palette(self.theme_var.get())
         self.fonts = dict(FONTS_LARGE if self.large_fonts.get() else FONTS_DEFAULT)
         self._configure_style()
+        self._apply_compact_layout()
+        self._apply_compact_layout()
 
         for row in self.buttons:
             for btn in row:
@@ -465,6 +511,15 @@ class TicTacToeGUI:
             self.log_label.configure(font=self._font("text"))
             self.match_label.configure(font=self._font("text"))
         self._save_settings()
+
+    def _apply_compact_layout(self) -> None:
+        wrap = 230 if self.compact_sidebar.get() else 260
+        if hasattr(self, "status_label"):
+            self.status_label.configure(wraplength=wrap)
+            self.score_label.configure(wraplength=wrap)
+            self.history_label.configure(wraplength=wrap)
+            self.log_label.configure(wraplength=wrap)
+            self.match_label.configure(wraplength=wrap)
 
     def _handle_exception(self, exc_type, exc_value, exc_traceback) -> None:
         self.logger.exception("Unhandled exception", exc_info=(exc_type, exc_value, exc_traceback))
@@ -502,8 +557,58 @@ class TicTacToeGUI:
     def _toggle_sound(self) -> None:
         self._save_settings()
 
+    def _toggle_show_coords(self) -> None:
+        self._refresh_board()
+        self._save_settings()
+
+    def _disable_motion_sound(self) -> None:
+        self.animations_enabled.set(False)
+        self.sound_enabled.set(False)
+        self._save_settings()
+
+    def _reset_toggles(self) -> None:
+        self.confirm_moves.set(True)
+        self.auto_start.set(False)
+        self.rotate_logs.set(True)
+        self.large_fonts.set(False)
+        self.animations_enabled.set(True)
+        self.sound_enabled.set(True)
+        self.show_coords.set(False)
+        self.compact_sidebar.set(False)
+        self._save_settings()
+        self._apply_compact_layout()
+
+    def _set_status_icon(self, mode: str) -> None:
+        if not hasattr(self, "status_icon"):
+            return
+        icon = "⏸️"
+        if mode == "player":
+            icon = "▶️"
+        elif mode == "ai":
+            icon = "⏳"
+        elif mode == "done":
+            icon = "✅"
+        self.status_icon.configure(text=icon)
+
     def _on_theme_change(self, _event=None) -> None:
         self._apply_theme()
+        if self.options_popup and self.options_popup.winfo_exists():
+            swatch = None
+            for child in self.options_popup.winfo_children():
+                for grand in child.winfo_children():
+                    if isinstance(grand, tk.Canvas):
+                        swatch = grand
+                        break
+            if swatch:
+                self._update_theme_swatch(swatch)
+
+    def _update_theme_swatch(self, canvas: tk.Canvas) -> None:
+        canvas.delete("all")
+        colors = [self._color(k) for k in ("BG", "PANEL", "ACCENT", "TEXT", "O")]
+        width = canvas.winfo_width() or 200
+        segment = width // len(colors)
+        for i, col in enumerate(colors):
+            canvas.create_rectangle(i * segment, 0, (i + 1) * segment, 20, fill=col, outline=col)
 
     def _build_controls(self, parent: tk.Widget) -> None:
         top = ttk.Frame(parent, padding=10, style="App.TFrame")
@@ -543,9 +648,14 @@ class TicTacToeGUI:
         self.reset_btn.grid(row=0, column=5, padx=5)
 
         ttk.Label(top, text="Match (best of):", style="App.TLabel", font=self._font("title")).grid(row=0, column=6, sticky="w", padx=(10, 0))
-        self.match_entry = ttk.Entry(top, textvariable=self.match_length_var, width=5)
+        self.match_entry = ttk.Entry(top, textvariable=self.match_length_var, width=6)
         self.match_entry.grid(row=0, column=7, padx=4, sticky="w")
         ttk.Button(top, text="New Match", style="Panel.TButton", command=self._new_match).grid(row=0, column=8, padx=4)
+        presets = ttk.Frame(top, style="App.TFrame")
+        presets.grid(row=0, column=9, sticky="w")
+        for i, val in enumerate((3, 5, 7)):
+            btn = ttk.Button(presets, text=f"Bo{val}", style="Panel.TButton", command=lambda v=val: self._set_match_preset(v))
+            btn.grid(row=0, column=i, padx=2)
 
     def _build_board(self, parent: tk.Widget) -> None:
         board_frame = ttk.Frame(parent, padding=14, style="Panel.TFrame")
@@ -572,7 +682,7 @@ class TicTacToeGUI:
                     activeforeground=self._color("BG"),
                     relief="raised",
                     bd=2,
-                    highlightthickness=2,
+                    highlightthickness=1,
                     highlightbackground=self._color("ACCENT"),
                     cursor="hand2",
                 )
@@ -589,21 +699,25 @@ class TicTacToeGUI:
         info.grid(row=0, column=0, sticky="nsew")
         info.columnconfigure(0, weight=1)
 
-        ttk.Label(info, text="Status", style="Title.TLabel").grid(row=0, column=0, sticky="w")
-        self.status_label = ttk.Label(info, textvariable=self.status_var, style="Status.TLabel", font=self._font("title"), wraplength=260)
-        self.status_label.grid(row=1, column=0, sticky="w", pady=(2, 8))
+        status_frame = ttk.Frame(info, style="Panel.TFrame")
+        status_frame.grid(row=0, column=0, sticky="ew", pady=(0, 4))
+        ttk.Label(status_frame, text="Status", style="Title.TLabel").grid(row=0, column=0, sticky="w")
+        self.status_icon = ttk.Label(status_frame, text="⏸️", style="Status.TLabel", font=self._font("title"))
+        self.status_icon.grid(row=1, column=0, sticky="w", padx=(0, 6))
+        self.status_label = ttk.Label(status_frame, textvariable=self.status_var, style="Status.TLabel", font=self._font("title"), wraplength=240)
+        self.status_label.grid(row=1, column=1, sticky="w", pady=(2, 6))
 
-        ttk.Label(info, text="Scoreboard", style="Title.TLabel").grid(row=2, column=0, sticky="w", pady=(6, 0))
+        ttk.Label(info, text="Scoreboard", style="Title.TLabel").grid(row=2, column=0, sticky="w", pady=(4, 0))
         self.score_label = ttk.Label(info, textvariable=self.score_var, style="App.TLabel", font=self._font("text"), wraplength=260, justify="left")
-        self.score_label.grid(row=3, column=0, sticky="w", pady=(2, 10))
+        self.score_label.grid(row=3, column=0, sticky="w", pady=(2, 6))
 
         ttk.Label(info, text="Match Score", style="Title.TLabel").grid(row=4, column=0, sticky="w")
         self.match_label = ttk.Label(info, textvariable=self.match_var, style="App.TLabel", font=self._font("text"), wraplength=260, justify="left")
-        self.match_label.grid(row=5, column=0, sticky="w", pady=(2, 10))
+        self.match_label.grid(row=5, column=0, sticky="w", pady=(2, 6))
 
         ttk.Label(info, text="Recent Results", style="Title.TLabel").grid(row=6, column=0, sticky="w")
         self.history_label = ttk.Label(info, textvariable=self.history_var, style="App.TLabel", font=self._font("text"), wraplength=260, justify="left")
-        self.history_label.grid(row=7, column=0, sticky="w", pady=(2, 10))
+        self.history_label.grid(row=7, column=0, sticky="w", pady=(2, 6))
 
         self.log_label = ttk.Label(info, textvariable=self.log_path_var, style="Muted.TLabel", font=self._font("text"), wraplength=260, justify="left")
         self.log_label.grid(row=8, column=0, sticky="w", pady=(4, 8))
@@ -624,10 +738,13 @@ class TicTacToeGUI:
         ttk.Button(btn_row, text="Hint", style="Panel.TButton", command=self._show_hint).grid(row=0, column=0, sticky="ew", padx=3)
         ttk.Button(btn_row, text="Undo Move", style="Panel.TButton", command=self._undo_move).grid(row=0, column=1, sticky="ew", padx=3)
 
-        ttk.Button(info, text="Options", style="Panel.TButton", command=self._show_options_popup).grid(row=12, column=0, sticky="ew", pady=(8, 2))
-        ttk.Button(info, text="View history", style="Panel.TButton", command=self._view_history_popup).grid(row=13, column=0, sticky="ew", pady=(6, 2))
-        ttk.Button(info, text="Save history now", style="Panel.TButton", command=self._save_history_now).grid(row=14, column=0, sticky="ew", pady=(2, 0))
-        ttk.Button(info, text="View achievements", style="Panel.TButton", command=self._show_achievements_popup).grid(row=15, column=0, sticky="ew", pady=(6, 0))
+        records = ttk.Frame(info, style="Panel.TFrame")
+        records.grid(row=12, column=0, sticky="ew", pady=(6, 2))
+        records.columnconfigure((0, 1), weight=1)
+        ttk.Button(records, text="View history", style="Panel.TButton", command=self._view_history_popup).grid(row=0, column=0, sticky="ew", padx=2, pady=2)
+        ttk.Button(records, text="Save history", style="Panel.TButton", command=self._save_history_now).grid(row=0, column=1, sticky="ew", padx=2, pady=2)
+        ttk.Button(records, text="Achievements", style="Panel.TButton", command=self._show_achievements_popup).grid(row=1, column=0, columnspan=2, sticky="ew", padx=2, pady=(2, 2))
+        ttk.Button(records, text="Options", style="Panel.TButton", command=self._show_options_popup).grid(row=2, column=0, columnspan=2, sticky="ew", padx=2, pady=(2, 0))
 
     def _on_diff_change(self, _event=None) -> None:
         self._apply_selection()
@@ -655,7 +772,10 @@ class TicTacToeGUI:
                 idx = r * 3 + c
                 val = self.session.board[idx]
                 btn = self.buttons[r][c]
-                btn["text"] = val
+                if val == " " and self.show_coords.get():
+                    btn["text"] = f"{r+1},{c+1}"
+                else:
+                    btn["text"] = val
                 if val == "X":
                     btn.configure(fg=self._color("ACCENT"), bg=btn.default_bg)
                 elif val == "O":
@@ -665,12 +785,15 @@ class TicTacToeGUI:
 
     def _hover_on(self, btn: tk.Button) -> None:
         if not self.animations_enabled.get():
+            if btn["text"] == " ":
+                btn.configure(highlightbackground=self._color("ACCENT"), highlightthickness=2)
             return
         if btn["text"] == " ":
             btn.configure(bg=self._color("ACCENT"), fg=self._color("BG"), relief="solid")
 
     def _hover_off(self, btn: tk.Button) -> None:
         if not self.animations_enabled.get():
+            btn.configure(highlightbackground=self._color("ACCENT"), highlightthickness=1)
             return
         val = btn["text"]
         if val == "X":
@@ -689,7 +812,14 @@ class TicTacToeGUI:
         self.score_var.set("\n".join(lines))
         if self.session.history:
             recent = self.session.history[-3:]
-            self.history_var.set("Recent: " + " | ".join(f"{d}: {r}" for d, r, _ in recent))
+            parsed = []
+            for item in recent:
+                if len(item) == 3:
+                    d, r, ts = item
+                else:
+                    d, r, ts, _ = item  # type: ignore[misc]
+                parsed.append(f"{d}: {r}")
+            self.history_var.set("Recent: " + " | ".join(parsed))
         else:
             self.history_var.set("Recent: none")
         # Update achievements popup if open
@@ -706,6 +836,7 @@ class TicTacToeGUI:
         self._refresh_board()
         self.session.game_over = False
         self.status_var.set(f"{self.session.label()}: Your turn.")
+        self._set_status_icon("player")
         self._refresh_scoreboard()
         self.match_var.set(self._match_score_text())
         self.player_turn = True
@@ -732,6 +863,7 @@ class TicTacToeGUI:
             return
 
         self.status_var.set("AI is thinking...")
+        self._set_status_icon("ai")
         self.player_turn = False
         self.pending_ai_id = self.root.after(250, self._ai_move)
 
@@ -749,6 +881,7 @@ class TicTacToeGUI:
             self._finish_round(winner or "Draw")
             return
         self.status_var.set("Your turn.")
+        self._set_status_icon("player")
         self.player_turn = True
 
     def _finish_round(self, winner: str) -> None:
@@ -757,6 +890,7 @@ class TicTacToeGUI:
             self.status_var.set("It's a draw. Start a new game.")
         else:
             self.status_var.set(f"Player {winner} wins! Start a new game.")
+        self._set_status_icon("done")
         self.session.record_result(winner)
         self._refresh_scoreboard()
         self.last_move_idx = None
@@ -883,20 +1017,38 @@ class TicTacToeGUI:
     def _populate_achievements(self, popup: tk.Toplevel) -> None:
         for child in popup.winfo_children():
             child.destroy()
-        ttk.Label(popup, text="Achievements (session)", style="Title.TLabel").pack(anchor="w", padx=10, pady=(8, 4))
-        text = tk.Text(
-            popup,
-            width=40,
-            height=10,
-            bg=self._color("PANEL"),
-            fg=self._color("TEXT"),
-            insertbackground=self._color("TEXT"),
-            relief="flat",
-        )
-        text.pack(fill="both", expand=True, padx=10, pady=4)
-        for item in self._compute_session_achievements():
-            text.insert("end", f"- {item}\n")
-        text.configure(state="disabled")
+        ttk.Label(popup, text="Achievements (lifetime)", style="Title.TLabel").pack(anchor="w", padx=10, pady=(8, 4))
+        container = ttk.Frame(popup, style="Panel.TFrame")
+        container.pack(fill="both", expand=True, padx=10, pady=4)
+        canvas = tk.Canvas(container, bg=self._color("PANEL"), highlightthickness=0)
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
+        frame = ttk.Frame(canvas, style="Panel.TFrame")
+        frame_id = canvas.create_window((0, 0), window=frame, anchor="nw")
+
+        def _on_configure(event) -> None:
+            canvas.configure(scrollregion=canvas.bbox("all"))
+            canvas.itemconfig(frame_id, width=canvas.winfo_width())
+
+        frame.bind("<Configure>", _on_configure)
+        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        achievements = self._compute_session_achievements()
+        if self.achievements_filter_earned.get():
+            achievements = [a for a in achievements if not a.startswith("(locked)")]
+        for item in achievements:
+            ttk.Label(frame, text=f"- {item}", style="App.TLabel", wraplength=320, justify="left").pack(anchor="w", pady=2)
+        frame.update_idletasks()
+        if self.achievements_popup and achievements:
+            try:
+                first_locked_idx = next(i for i, a in enumerate(achievements) if a.startswith("(locked)"))
+                canvas = frame.nametowidget(frame.winfo_parent())
+                total = len(achievements)
+                if total:
+                    canvas.yview_moveto(first_locked_idx / max(1, total))
+            except StopIteration:
+                pass
 
     def _show_achievements_popup(self) -> None:
         if self.achievements_popup and self.achievements_popup.winfo_exists():
@@ -908,6 +1060,16 @@ class TicTacToeGUI:
         popup.configure(bg=self._color("BG"))
         self.achievements_popup = popup
         popup.protocol("WM_DELETE_WINDOW", lambda: self._close_achievements_popup(popup))
+        controls = ttk.Frame(popup, style="App.TFrame")
+        controls.pack(fill="x", padx=10, pady=(6, 0))
+        ttk.Checkbutton(
+            controls,
+            text="Show earned only",
+            variable=self.achievements_filter_earned,
+            style="App.TCheckbutton",
+            command=lambda: self._populate_achievements(popup),
+        ).pack(side="left")
+        ttk.Button(controls, text="Jump to first locked", style="Panel.TButton", command=lambda: self._populate_achievements(popup)).pack(side="right")
         self._populate_achievements(popup)
 
     def _close_achievements_popup(self, popup: tk.Toplevel) -> None:
@@ -957,8 +1119,12 @@ class TicTacToeGUI:
         ttk.Checkbutton(frame, text="Larger fonts", variable=self.large_fonts, style="App.TCheckbutton", command=self._toggle_font_size).grid(row=4, column=0, sticky="w", pady=2)
         ttk.Checkbutton(frame, text="Animations", variable=self.animations_enabled, style="App.TCheckbutton", command=self._toggle_animations).grid(row=5, column=0, sticky="w", pady=2)
         ttk.Checkbutton(frame, text="Sound cues", variable=self.sound_enabled, style="App.TCheckbutton", command=self._toggle_sound).grid(row=6, column=0, sticky="w", pady=2)
+        ttk.Checkbutton(frame, text="Show board coordinates", variable=self.show_coords, style="App.TCheckbutton", command=self._toggle_show_coords).grid(row=7, column=0, sticky="w", pady=2)
 
-        ttk.Label(frame, text="Theme", style="Title.TLabel").grid(row=7, column=0, sticky="w", pady=(8, 2))
+        ttk.Button(frame, text="No animation/sound preset", style="Panel.TButton", command=self._disable_motion_sound).grid(row=8, column=0, sticky="ew", pady=(6, 2))
+        ttk.Button(frame, text="Reset toggles to default", style="Panel.TButton", command=self._reset_toggles).grid(row=9, column=0, sticky="ew", pady=(2, 4))
+
+        ttk.Label(frame, text="Theme", style="Title.TLabel").grid(row=9, column=0, sticky="w", pady=(8, 2))
         theme_box = ttk.Combobox(
             frame,
             textvariable=self.theme_var,
@@ -973,12 +1139,17 @@ class TicTacToeGUI:
                 "light",
             ],
             style="App.TCombobox",
+            width=20,
         )
-        theme_box.grid(row=8, column=0, sticky="ew", pady=(0, 4))
+        theme_box.grid(row=10, column=0, sticky="ew", pady=(0, 4))
         theme_box.bind("<<ComboboxSelected>>", self._on_theme_change)
 
-        ttk.Button(frame, text="Copy diagnostics", style="Panel.TButton", command=self._copy_diagnostics).grid(row=9, column=0, sticky="ew", pady=(6, 0))
-        ttk.Button(frame, text="Close", style="Panel.TButton", command=lambda: self._close_options_popup(popup)).grid(row=10, column=0, sticky="e", pady=(10, 0))
+        swatch = tk.Canvas(frame, height=20, bg=self._color("PANEL"), highlightthickness=0)
+        swatch.grid(row=11, column=0, sticky="ew", pady=(0, 6))
+        self._update_theme_swatch(swatch)
+
+        ttk.Button(frame, text="Copy diagnostics", style="Panel.TButton", command=self._copy_diagnostics).grid(row=12, column=0, sticky="ew", pady=(6, 0))
+        ttk.Button(frame, text="Close", style="Panel.TButton", command=lambda: self._close_options_popup(popup)).grid(row=13, column=0, sticky="e", pady=(10, 0))
 
     def _close_options_popup(self, popup: tk.Toplevel) -> None:
         try:

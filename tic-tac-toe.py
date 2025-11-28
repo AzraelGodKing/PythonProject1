@@ -377,6 +377,40 @@ def save_session_history_to_file(history: List[HistoryEntry], file_path: str = H
     return file_path
 
 
+def load_session_history_from_file(file_path: str = HISTORY_FILE, limit: int = 100) -> List[HistoryEntry]:
+    if SAFE_MODE:
+        return []
+    entries: List[HistoryEntry] = []
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            lines = f.readlines()[-limit:]
+    except FileNotFoundError:
+        return []
+    except OSError:
+        return []
+
+    for line in lines:
+        text = line.strip()
+        if " - " not in text or ":" not in text:
+            continue
+        ts_part, rest = text.split(" - ", 1)
+        diff_part, result_part = rest.split(":", 1)
+        result_part = result_part.strip()
+        duration = 0.0
+        if "(" in result_part and ")" in result_part:
+            main, _, dur_text = result_part.partition("(")
+            result_part = main.strip()
+            dur_text = dur_text.strip("()s ")
+            try:
+                duration = float(dur_text)
+            except ValueError:
+                duration = 0.0
+        diff = diff_part.strip()
+        result = result_part
+        entries.append((diff, result, ts_part, duration))
+    return entries
+
+
 def maybe_reset_scoreboard(scoreboard: Dict[str, Dict[str, int]]) -> Dict[str, Dict[str, int]]:
     choice = input("Reset scoreboard to zeroes? (y/n): ").strip().lower()
     if choice in {"y", "yes"}:
@@ -947,7 +981,7 @@ def play_round(ai_move_fn: Callable[[List[str]], int], difficulty_label: str) ->
 
 def play_session(scoreboard: Dict[str, Dict[str, int]]) -> Dict[str, Dict[str, int]]:
     _MINIMAX_CACHE.clear()
-    session_history: List[HistoryEntry] = []
+    session_history: List[HistoryEntry] = load_session_history_from_file()
     stats = _new_stats()
 
     diff_key, ai_move_fn, personality = choose_difficulty()
