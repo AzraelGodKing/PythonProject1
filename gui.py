@@ -173,10 +173,12 @@ class TicTacToeGUI:
         self.fonts = dict(FONTS_LARGE if self.large_fonts.get() else FONTS_DEFAULT)
         self._configure_style()
         self.session = GameSession()
+        self.match_length = module.DEFAULT_MATCH_LENGTH
         self.match_length_var = tk.StringVar(value=str(module.DEFAULT_MATCH_LENGTH))
         self.match_target = (module.DEFAULT_MATCH_LENGTH // 2) + 1
         self.match_wins = {"X": 0, "O": 0, "Draw": 0}
         self.match_over = False
+        self.match_rounds = 0
         self.options_popup: Optional[tk.Toplevel] = None
         self.history_popup: Optional[tk.Toplevel] = None
         self.achievements_popup: Optional[tk.Toplevel] = None
@@ -229,7 +231,11 @@ class TicTacToeGUI:
         return dict(PALETTE_DEFAULT)
 
     def _match_score_text(self) -> str:
-        base = f"Target {self.match_target}: X={self.match_wins['X']}  O={self.match_wins['O']}  Draws={self.match_wins['Draw']}"
+        base = (
+            f"Bo{self.match_length} (target {self.match_target}) "
+            f"| Round {self.match_rounds + 1 if not self.match_over else self.match_rounds}/{self.match_length} "
+            f"| X={self.match_wins['X']}  O={self.match_wins['O']}  Draws={self.match_wins['Draw']}"
+        )
         if self.match_winner:
             base += f"  | Winner: {self.match_winner}"
         return base
@@ -251,6 +257,7 @@ class TicTacToeGUI:
         self.match_wins = {"X": 0, "O": 0, "Draw": 0}
         self.match_over = False
         self.match_winner = ""
+        self.match_rounds = 0
         self.match_var.set(self._match_score_text())
         self.start_new_game()
 
@@ -827,6 +834,8 @@ class TicTacToeGUI:
             self._populate_achievements(self.achievements_popup)
 
     def start_new_game(self) -> None:
+        if getattr(self, "match_over", False):
+            self._new_match()
         if self.pending_ai_id:
             self.root.after_cancel(self.pending_ai_id)
             self.pending_ai_id = None
@@ -884,6 +893,33 @@ class TicTacToeGUI:
         self._set_status_icon("player")
         self.player_turn = True
 
+    def _update_match_progress(self, round_winner: str) -> None:
+        if self.match_over:
+            return
+
+        self.match_rounds += 1
+        self.match_wins[round_winner] = self.match_wins.get(round_winner, 0) + 1
+
+        target_hit = self.match_wins["X"] >= self.match_target or self.match_wins["O"] >= self.match_target
+        rounds_exhausted = self.match_rounds >= self.match_length
+
+        if target_hit or rounds_exhausted:
+            if self.match_wins["X"] > self.match_wins["O"]:
+                self.match_winner = "X"
+            elif self.match_wins["O"] > self.match_wins["X"]:
+                self.match_winner = "O"
+            else:
+                self.match_winner = "Draw"
+            self.match_over = True
+            self.player_turn = False
+            if self.match_winner == "Draw":
+                self.status_var.set("Match over: draw. Start a new match.")
+            else:
+                self.status_var.set(f"Match over! {self.match_winner} wins the match.")
+            self._set_status_icon("done")
+
+        self.match_var.set(self._match_score_text())
+
     def _finish_round(self, winner: str) -> None:
         self.session.game_over = True
         if winner == "Draw":
@@ -892,9 +928,10 @@ class TicTacToeGUI:
             self.status_var.set(f"Player {winner} wins! Start a new game.")
         self._set_status_icon("done")
         self.session.record_result(winner)
+        self._update_match_progress(winner)
         self._refresh_scoreboard()
         self.last_move_idx = None
-        if self.auto_start.get():
+        if self.auto_start.get() and not getattr(self, "match_over", False):
             self.root.after(600, self.start_new_game)
         self._play_sound()
 

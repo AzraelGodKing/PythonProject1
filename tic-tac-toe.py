@@ -26,7 +26,6 @@ HistoryEntry = Tuple[str, str, str, float]
 _MINIMAX_CACHE: Dict[Tuple[str, bool], int] = {}
 MINIMAX_CACHE_LIMIT = 2048
 SessionStats = Dict[str, Dict[str, float]]
-DEFAULT_MATCH_LENGTH = 3
 
 
 def _new_scoreboard() -> Dict[str, Dict[str, int]]:
@@ -990,6 +989,7 @@ def play_session(scoreboard: Dict[str, Dict[str, int]]) -> Dict[str, Dict[str, i
     match_length = choose_match_length()
     match_target = (match_length // 2) + 1
     match_wins = {"X": 0, "O": 0, "Draw": 0}
+    match_rounds = 0
 
     while True:
         print_history(session_history)
@@ -1013,6 +1013,7 @@ def play_session(scoreboard: Dict[str, Dict[str, int]]) -> Dict[str, Dict[str, i
         session_history.append((difficulty_label, winner, timestamp, duration))
         update_stats(stats, diff_key, winner, duration)
         match_wins[winner] = match_wins.get(winner, 0) + 1
+        match_rounds += 1
 
         save_scoreboard(scoreboard)
         print_scoreboard(scoreboard)
@@ -1021,14 +1022,35 @@ def play_session(scoreboard: Dict[str, Dict[str, int]]) -> Dict[str, Dict[str, i
         print_match_score(match_wins, match_target)
         print_achievements(stats, session_history)
 
+        match_done = False
+        reason = "target"
         if match_wins["X"] >= match_target or match_wins["O"] >= match_target:
-            match_winner = "X" if match_wins["X"] > match_wins["O"] else "O"
-            print(f"Match over! Winner: {match_winner}")
+            match_done = True
+            reason = "target"
+        elif match_rounds >= match_length:
+            match_done = True
+            reason = "rounds"
+
+        if match_done:
+            if match_wins["X"] > match_wins["O"]:
+                match_winner = "X"
+            elif match_wins["O"] > match_wins["X"]:
+                match_winner = "O"
+            else:
+                match_winner = "Draw"
+            if match_winner == "Draw":
+                if reason == "rounds":
+                    print("Match over! No winner after the full match length (draw).")
+                else:
+                    print("Match over! It ended in a draw.")
+            else:
+                print(f"Match over! Winner: {match_winner}")
             another_match = input("Start another match? (y/n): ").strip().lower()
             if another_match in {"y", "yes"}:
                 match_length = choose_match_length()
                 match_target = (match_length // 2) + 1
                 match_wins = {"X": 0, "O": 0, "Draw": 0}
+                match_rounds = 0
                 change_diff = input("Change difficulty/personality for next match? (y/n): ").strip().lower()
                 if change_diff in {"y", "yes"}:
                     diff_key, ai_move_fn, personality = choose_difficulty()
@@ -1036,16 +1058,10 @@ def play_session(scoreboard: Dict[str, Dict[str, int]]) -> Dict[str, Dict[str, i
                     print(f"Switched to {difficulty_label}.")
                 continue
             break
-
-        again = input("Play again? (y/n): ").strip().lower()
-        if again not in {"y", "yes"}:
-            break
-
-        change_diff = input("Change difficulty/personality for next round? (y/n): ").strip().lower()
-        if change_diff in {"y", "yes"}:
-            diff_key, ai_move_fn, personality = choose_difficulty()
-            difficulty_label = difficulty_display_label(diff_key, personality)
-            print(f"Switched to {difficulty_label}.")
+        else:
+            cont = input("Continue the current match? (y to continue, n to end): ").strip().lower()
+            if cont not in {"y", "yes"}:
+                break
 
     print("\nThanks for playing this session!")
     print_scoreboard(scoreboard)
