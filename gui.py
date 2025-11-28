@@ -883,20 +883,25 @@ class TicTacToeGUI:
     def _populate_achievements(self, popup: tk.Toplevel) -> None:
         for child in popup.winfo_children():
             child.destroy()
-        ttk.Label(popup, text="Achievements (session)", style="Title.TLabel").pack(anchor="w", padx=10, pady=(8, 4))
-        text = tk.Text(
-            popup,
-            width=40,
-            height=10,
-            bg=self._color("PANEL"),
-            fg=self._color("TEXT"),
-            insertbackground=self._color("TEXT"),
-            relief="flat",
-        )
-        text.pack(fill="both", expand=True, padx=10, pady=4)
+        ttk.Label(popup, text="Achievements (lifetime)", style="Title.TLabel").pack(anchor="w", padx=10, pady=(8, 4))
+        container = ttk.Frame(popup, style="Panel.TFrame")
+        container.pack(fill="both", expand=True, padx=10, pady=4)
+        canvas = tk.Canvas(container, bg=self._color("PANEL"), highlightthickness=0)
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
+        frame = ttk.Frame(canvas, style="Panel.TFrame")
+        frame_id = canvas.create_window((0, 0), window=frame, anchor="nw")
+
+        def _on_configure(event) -> None:
+            canvas.configure(scrollregion=canvas.bbox("all"))
+            canvas.itemconfig(frame_id, width=canvas.winfo_width())
+
+        frame.bind("<Configure>", _on_configure)
+        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
         for item in self._compute_session_achievements():
-            text.insert("end", f"- {item}\n")
-        text.configure(state="disabled")
+            ttk.Label(frame, text=f"- {item}", style="App.TLabel", wraplength=320, justify="left").pack(anchor="w", pady=2)
 
     def _show_achievements_popup(self) -> None:
         if self.achievements_popup and self.achievements_popup.winfo_exists():
