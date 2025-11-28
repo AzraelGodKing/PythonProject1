@@ -350,7 +350,14 @@ def get_player_move(board: List[str]) -> Optional[int]:
         coords = parse_move(move_text)
         if not coords:
             attempts += 1
-            print("Please enter a row/col from 1 to 3 (e.g., 1,3 or 2 2) or a single spot 1-9.")
+            open_moves = [str(i + 1) for i, v in enumerate(board) if v == " "]
+            if open_moves:
+                print(
+                    "Please enter a row/col from 1 to 3 (e.g., 1,3 or 2 2) or a single spot 1-9. "
+                    f"Open spots: {', '.join(open_moves)}"
+                )
+            else:
+                print("Please enter a row/col from 1 to 3 (e.g., 1,3 or 2 2) or a single spot 1-9.")
             if attempts >= 5:
                 confirm = input("Too many invalid tries. Quit this round? (y/n) Scores will not change if you quit: ").strip().lower()
                 if confirm in {"y", "yes"}:
