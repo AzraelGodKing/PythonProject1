@@ -123,6 +123,9 @@ class GameSession:
         self.board = [" "] * 9
         self.game_over = False
         self.history = []
+        loaded_history = module.load_session_history_from_file()
+        if loaded_history:
+            self.history = [(d, r, ts) for d, r, ts, _ in loaded_history]
         self.last_history_path: str = module.HISTORY_FILE
 
     def set_difficulty(self, level: str, personality: str = "standard") -> None:
@@ -752,7 +755,14 @@ class TicTacToeGUI:
         self.score_var.set("\n".join(lines))
         if self.session.history:
             recent = self.session.history[-3:]
-            self.history_var.set("Recent: " + " | ".join(f"{d}: {r}" for d, r, _ in recent))
+            parsed = []
+            for item in recent:
+                if len(item) == 3:
+                    d, r, ts = item
+                else:
+                    d, r, ts, _ = item  # type: ignore[misc]
+                parsed.append(f"{d}: {r}")
+            self.history_var.set("Recent: " + " | ".join(parsed))
         else:
             self.history_var.set("Recent: none")
         # Update achievements popup if open
