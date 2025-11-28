@@ -1107,8 +1107,12 @@ class TicTacToeGUI:
         self._refresh_scoreboard()
         self._refresh_move_log()
         self.last_move_idx = None
-        if self.auto_start.get() and not getattr(self, "match_over", False):
-            self.root.after(600, self.start_new_game)
+        if self.auto_start.get():
+            if getattr(self, "match_over", False):
+                # Auto-start a fresh match when the current one is done (helps Bo1 users).
+                self.root.after(600, self._new_match)
+            else:
+                self.root.after(600, self.start_new_game)
         self._play_sound()
 
     def _flash_ai_move(self, idx: int) -> None:
