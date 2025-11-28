@@ -15,6 +15,7 @@ import math
 from typing import Optional
 from tkinter import messagebox, ttk
 import options
+import ai_vs_ai
 
 
 MODULE_PATH = pathlib.Path(__file__).with_name("tic-tac-toe.py")
@@ -185,6 +186,7 @@ class TicTacToeGUI:
         self.options_popup: Optional[tk.Toplevel] = None
         self.history_popup: Optional[tk.Toplevel] = None
         self.achievements_popup: Optional[tk.Toplevel] = None
+        self.ai_vs_ai_popup: Optional[tk.Toplevel] = None
         self.achievements_filter_earned = tk.BooleanVar(value=False)
         self.compact_sidebar = tk.BooleanVar(value=settings.get("compact_sidebar", False))
         self.match_winner = ""
@@ -353,6 +355,7 @@ class TicTacToeGUI:
         game_menu.add_command(label="New Match", command=self._new_match)
         game_menu.add_separator()
         game_menu.add_command(label="Save History", command=self._save_history_now)
+        game_menu.add_command(label="AI vs AI Mode", command=self._show_ai_vs_ai_popup)
         game_menu.add_separator()
         game_menu.add_command(label="Exit", command=self.root.quit)
         menubar.add_cascade(label="Game", menu=game_menu)
@@ -816,7 +819,8 @@ class TicTacToeGUI:
         ttk.Button(records, text="View history", style="Panel.TButton", command=self._view_history_popup).grid(row=0, column=0, sticky="ew", padx=2, pady=2)
         ttk.Button(records, text="Save history", style="Panel.TButton", command=self._save_history_now).grid(row=0, column=1, sticky="ew", padx=2, pady=2)
         ttk.Button(records, text="Achievements", style="Panel.TButton", command=self._show_achievements_popup).grid(row=1, column=0, columnspan=2, sticky="ew", padx=2, pady=(2, 2))
-        ttk.Button(records, text="Options", style="Panel.TButton", command=self._show_options_popup).grid(row=2, column=0, columnspan=2, sticky="ew", padx=2, pady=(2, 0))
+        ttk.Button(records, text="AI vs AI Mode", style="Panel.TButton", command=self._show_ai_vs_ai_popup).grid(row=2, column=0, columnspan=2, sticky="ew", padx=2, pady=(2, 2))
+        ttk.Button(records, text="Options", style="Panel.TButton", command=self._show_options_popup).grid(row=3, column=0, columnspan=2, sticky="ew", padx=2, pady=(2, 0))
 
     def _on_diff_change(self, _event=None) -> None:
         self._apply_selection()
@@ -1251,6 +1255,116 @@ class TicTacToeGUI:
             self.root.bell()
         except tk.TclError:
             pass
+
+    def _show_ai_vs_ai_popup(self) -> None:
+        if self.ai_vs_ai_popup and self.ai_vs_ai_popup.winfo_exists():
+            self.ai_vs_ai_popup.lift()
+            self.ai_vs_ai_popup.focus_set()
+            return
+
+        popup = tk.Toplevel(self.root)
+        popup.title("AI vs AI Mode")
+        popup.configure(bg=self._color("BG"))
+        self.ai_vs_ai_popup = popup
+        frame = ttk.Frame(popup, padding=12, style="App.TFrame")
+        frame.grid(row=0, column=0, sticky="nsew")
+        popup.columnconfigure(0, weight=1)
+        popup.rowconfigure(0, weight=1)
+
+        ttk.Label(frame, text="AI vs AI", style="Title.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
+
+        ai_names = list(ai_vs_ai.AI_PLAYERS.keys())
+        self.ai_x_var = tk.StringVar(value=ai_names[0])
+        self.ai_o_var = tk.StringVar(value=ai_names[min(1, len(ai_names) - 1)])
+        self.ai_rounds_var = tk.StringVar(value="5")
+
+        ttk.Label(frame, text="AI for X:", style="App.TLabel").grid(row=1, column=0, sticky="w", padx=(0, 6))
+        ttk.Label(frame, text="AI for O:", style="App.TLabel").grid(row=2, column=0, sticky="w", padx=(0, 6))
+        ttk.Label(frame, text="Rounds:", style="App.TLabel").grid(row=3, column=0, sticky="w", padx=(0, 6))
+
+        ttk.Combobox(frame, textvariable=self.ai_x_var, values=ai_names, state="readonly", style="App.TCombobox", width=26).grid(row=1, column=1, sticky="ew", pady=2)
+        ttk.Combobox(frame, textvariable=self.ai_o_var, values=ai_names, state="readonly", style="App.TCombobox", width=26).grid(row=2, column=1, sticky="ew", pady=2)
+        ttk.Entry(frame, textvariable=self.ai_rounds_var, width=10).grid(row=3, column=1, sticky="w", pady=2)
+
+        ttk.Button(frame, text="Run AI Match", style="Panel.TButton", command=self._run_ai_vs_ai).grid(row=4, column=0, columnspan=2, sticky="ew", pady=(8, 6))
+
+        ttk.Label(frame, text="Results", style="Title.TLabel").grid(row=5, column=0, columnspan=2, sticky="w", pady=(8, 4))
+        self.ai_log = tk.Text(frame, height=12, wrap="word", bg=self._color("PANEL"), fg=self._color("TEXT"), relief="flat")
+        self.ai_log.grid(row=6, column=0, columnspan=2, sticky="nsew")
+        frame.rowconfigure(6, weight=1)
+        ttk.Button(frame, text="Close", style="Panel.TButton", command=lambda: self._close_ai_vs_ai_popup(popup)).grid(row=7, column=0, columnspan=2, sticky="e", pady=(10, 0))
+
+        self._load_ai_scores_into_log()
+
+    def _load_ai_scores_into_log(self) -> None:
+        if not hasattr(self, "ai_log"):
+            return
+        scores = ai_vs_ai.load_ai_scoreboard()
+        self.ai_log.delete("1.0", tk.END)
+        self.ai_log.insert(tk.END, "Current AI-vs-AI scores:\n")
+        if scores:
+            for name, val in sorted(scores.items()):
+                self.ai_log.insert(tk.END, f"- {name}: {val}\n")
+        else:
+            self.ai_log.insert(tk.END, "(empty)\n")
+
+    def _run_ai_vs_ai(self) -> None:
+        if not hasattr(self, "ai_log"):
+            return
+        ai_x_name = self.ai_x_var.get()
+        ai_o_name = self.ai_o_var.get()
+        try:
+            rounds = int(self.ai_rounds_var.get().strip() or "5")
+        except ValueError:
+            rounds = 5
+        rounds = max(1, rounds)
+
+        ai_x_fn = ai_vs_ai.AI_PLAYERS.get(ai_x_name)
+        ai_o_fn = ai_vs_ai.AI_PLAYERS.get(ai_o_name)
+        if not ai_x_fn or not ai_o_fn:
+            messagebox.showerror("AI selection", "Please select valid AIs for X and O.")
+            return
+
+        self.ai_log.insert(tk.END, f"\nRunning {rounds} rounds: X={ai_x_name} vs O={ai_o_name}\n")
+        self.ai_log.see(tk.END)
+        self.root.update_idletasks()
+
+        scores = ai_vs_ai.load_ai_scoreboard()
+        scores.setdefault(ai_x_name, 0)
+        scores.setdefault(ai_o_name, 0)
+        scores.setdefault("Draw", 0)
+
+        x_wins = o_wins = draws = 0
+        for i in range(1, rounds + 1):
+            winner = ai_vs_ai._play_ai_round(ai_x_fn, ai_o_fn)  # use shared logic
+            if winner == "X":
+                scores[ai_x_name] += 1
+                x_wins += 1
+                self.ai_log.insert(tk.END, f"Round {i}: X ({ai_x_name}) wins.\n")
+            elif winner == "O":
+                scores[ai_o_name] += 1
+                o_wins += 1
+                self.ai_log.insert(tk.END, f"Round {i}: O ({ai_o_name}) wins.\n")
+            else:
+                scores["Draw"] = scores.get("Draw", 0) + 1
+                draws += 1
+                self.ai_log.insert(tk.END, f"Round {i}: Draw.\n")
+            self.ai_log.see(tk.END)
+            self.root.update_idletasks()
+
+        ai_vs_ai.save_ai_scoreboard(scores)
+        self.ai_log.insert(tk.END, f"\nSession complete. X wins: {x_wins}, O wins: {o_wins}, Draws: {draws}\n")
+        self.ai_log.insert(tk.END, "Updated scores:\n")
+        for name, val in sorted(scores.items()):
+            self.ai_log.insert(tk.END, f"- {name}: {val}\n")
+        self.ai_log.see(tk.END)
+
+    def _close_ai_vs_ai_popup(self, popup: tk.Toplevel) -> None:
+        try:
+            popup.destroy()
+        finally:
+            self.ai_vs_ai_popup = None
+            self.ai_log = None
 
     def _show_options_popup(self) -> None:
         options.show_options_popup(self)
