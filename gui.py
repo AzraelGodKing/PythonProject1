@@ -828,6 +828,10 @@ class TicTacToeGUI:
     def _compute_session_achievements(self) -> list:
         total_wins = sum(1 for _, res, _ in self.session.history if res == "X")
         hard_wins = sum(1 for diff, res, _ in self.session.history if diff.startswith("Hard") and res == "X")
+        normal_wins = sum(1 for diff, res, _ in self.session.history if diff.startswith("Normal") and res == "X")
+        easy_wins = sum(1 for diff, res, _ in self.session.history if diff.startswith("Easy") and res == "X")
+        draws = sum(1 for _, res, _ in self.session.history if res == "Draw")
+
         streak = 0
         best_streak = 0
         for _, res, _ in self.session.history:
@@ -837,20 +841,24 @@ class TicTacToeGUI:
             else:
                 streak = 0
 
-        achievements = []
-        if total_wins >= 1:
-            achievements.append("First win!")
-        if total_wins >= 5:
-            achievements.append("Win 5 games in this session.")
-        if best_streak >= 3:
-            achievements.append(f"Hot streak: {best_streak} wins in a row.")
-        if hard_wins >= 1:
-            achievements.append("Cracked Hard mode once.")
-        if hard_wins >= 3:
-            achievements.append("Hard mode regular (3+ wins in session).")
-        if not achievements:
-            achievements.append("None yet. Keep playing!")
-        return achievements
+        defs = [
+            ("First win!", total_wins >= 1),
+            ("Win 5 games in this session.", total_wins >= 5),
+            ("Win 10 games in this session.", total_wins >= 10),
+            (f"Hot streak: {best_streak} wins in a row.", best_streak >= 3),
+            ("Cracked Hard mode once.", hard_wins >= 1),
+            ("Hard mode regular (3+ wins in session).", hard_wins >= 3),
+            ("Normal mode contender (3 wins).", normal_wins >= 3),
+            ("Easy warmup (3 wins).", easy_wins >= 3),
+            ("Draw collector (3 draws).", draws >= 3),
+        ]
+
+        earned = [name for name, ok in defs if ok]
+        locked = [f"(locked) {name}" for name, ok in defs if not ok]
+        items = earned + locked
+        if not items:
+            items = ["(locked) Achievements will appear as you play."]
+        return items
 
     def _populate_achievements(self, popup: tk.Toplevel) -> None:
         for child in popup.winfo_children():
