@@ -13,7 +13,9 @@ from tkinter import messagebox, ttk
 
 
 MODULE_PATH = pathlib.Path(__file__).with_name("tic-tac-toe.py")
+LOG_DIR = "logs"
 SETTINGS_FILE = "gui_settings.json"
+SETTINGS_BACKUP = os.path.join(LOG_DIR, "gui_settings.json.bak")
 spec = importlib.util.spec_from_file_location("tictactoe_module_gui", MODULE_PATH)
 module = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
 assert spec.loader is not None
@@ -198,29 +200,40 @@ class TicTacToeGUI:
             "animations": True,
             "sound": True,
         }
+        data = None
         try:
             with open(self.settings_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            if not isinstance(data, dict):
-                return defaults
-            # backward compatibility: high_contrast flag becomes theme
-            theme_val = data.get("theme")
-            if theme_val not in {"default", "high_contrast", "colorblind", "light"}:
-                if bool(data.get("high_contrast", False)):
-                    theme_val = "high_contrast"
-                else:
-                    theme_val = defaults["theme"]
-            return {
-                "confirm_moves": bool(data.get("confirm_moves", defaults["confirm_moves"])),
-                "auto_start": bool(data.get("auto_start", defaults["auto_start"])),
-                "rotate_logs": bool(data.get("rotate_logs", defaults["rotate_logs"])),
-                "theme": theme_val,
-                "large_fonts": bool(data.get("large_fonts", defaults["large_fonts"])),
-                "animations": bool(data.get("animations", defaults["animations"])),
-                "sound": bool(data.get("sound", defaults["sound"])),
-            }
         except (OSError, json.JSONDecodeError):
+            # attempt backup restore
+            try:
+                with open(SETTINGS_BACKUP, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                self.status_var = getattr(self, "status_var", tk.StringVar())
+                self.status_var.set("Settings restored from backup.")
+            except (OSError, json.JSONDecodeError):
+                self.status_var = getattr(self, "status_var", tk.StringVar())
+                self.status_var.set("Settings file unreadable; using defaults.")
+                return defaults
+
+        if not isinstance(data, dict):
             return defaults
+        # backward compatibility: high_contrast flag becomes theme
+        theme_val = data.get("theme")
+        if theme_val not in {"default", "high_contrast", "colorblind", "light"}:
+            if bool(data.get("high_contrast", False)):
+                theme_val = "high_contrast"
+            else:
+                theme_val = defaults["theme"]
+        return {
+            "confirm_moves": bool(data.get("confirm_moves", defaults["confirm_moves"])),
+            "auto_start": bool(data.get("auto_start", defaults["auto_start"])),
+            "rotate_logs": bool(data.get("rotate_logs", defaults["rotate_logs"])),
+            "theme": theme_val,
+            "large_fonts": bool(data.get("large_fonts", defaults["large_fonts"])),
+            "animations": bool(data.get("animations", defaults["animations"])),
+            "sound": bool(data.get("sound", defaults["sound"])),
+        }
 
     def _save_settings(self) -> None:
         data = {
@@ -233,6 +246,16 @@ class TicTacToeGUI:
             "sound": self.sound_enabled.get(),
         }
         try:
+            # write backup first
+            try:
+                os.makedirs(LOG_DIR, exist_ok=True)
+                if os.path.exists(self.settings_path):
+                    with open(self.settings_path, "r", encoding="utf-8") as f:
+                        current = f.read()
+                    with open(SETTINGS_BACKUP, "w", encoding="utf-8") as f:
+                        f.write(current)
+            except OSError:
+                pass
             with open(self.settings_path, "w", encoding="utf-8") as f:
                 json.dump(data, f)
         except OSError as exc:
