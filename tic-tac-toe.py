@@ -17,6 +17,7 @@ DIFFICULTIES = ("Easy", "Normal", "Hard")
 DEFAULT_SCORE = {"X": 0, "O": 0, "Draw": 0}
 HistoryEntry = Tuple[str, str, str, float]
 _MINIMAX_CACHE: Dict[Tuple[str, bool], int] = {}
+MINIMAX_CACHE_LIMIT = 2048
 SessionStats = Dict[str, Dict[str, float]]
 
 
@@ -610,6 +611,8 @@ def _minimax(board: List[str], is_ai_turn: bool, depth: int) -> int:
             score = _minimax(board, False, depth + 1)
             board[idx] = " "
             best_score = max(best_score, score)
+        if len(_MINIMAX_CACHE) >= MINIMAX_CACHE_LIMIT:
+            _MINIMAX_CACHE.clear()
         _MINIMAX_CACHE[key] = best_score
         return best_score
 
@@ -621,6 +624,8 @@ def _minimax(board: List[str], is_ai_turn: bool, depth: int) -> int:
         score = _minimax(board, True, depth + 1)
         board[idx] = " "
         best_score = min(best_score, score)
+    if len(_MINIMAX_CACHE) >= MINIMAX_CACHE_LIMIT:
+        _MINIMAX_CACHE.clear()
     _MINIMAX_CACHE[key] = best_score
     return best_score
 
@@ -769,6 +774,7 @@ def play_round(ai_move_fn: Callable[[List[str]], int], difficulty_label: str) ->
 
 
 def play_session(scoreboard: Dict[str, Dict[str, int]]) -> Dict[str, Dict[str, int]]:
+    _MINIMAX_CACHE.clear()
     session_history: List[HistoryEntry] = []
     stats = _new_stats()
 
