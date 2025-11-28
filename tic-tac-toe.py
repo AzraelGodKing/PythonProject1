@@ -494,6 +494,22 @@ def ai_move_hard(board: List[str]) -> int:
     return best_idx
 
 
+def best_player_hint(board: List[str]) -> Optional[int]:
+    """Suggest the best move for player X by minimizing the AI's resulting score."""
+    best_score = float("inf")
+    best_idx: Optional[int] = None
+    for idx, cell in enumerate(board):
+        if cell != " ":
+            continue
+        board[idx] = "X"
+        score = _minimax(board, True, 0)
+        board[idx] = " "
+        if score < best_score:
+            best_score = score
+            best_idx = idx
+    return best_idx
+
+
 def choose_normal_personality() -> Tuple[str, Callable[[List[str]], int]]:
     options = {
         "1": "balanced",

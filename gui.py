@@ -16,17 +16,39 @@ module = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
 assert spec.loader is not None
 spec.loader.exec_module(module)  # type: ignore[arg-type]
 
-PALETTE_BG = "#0f172a"
-PALETTE_PANEL = "#1e293b"
-PALETTE_ACCENT = "#38bdf8"
-PALETTE_TEXT = "#e2e8f0"
-PALETTE_MUTED = "#94a3b8"
-PALETTE_BTN = "#0ea5e9"
-PALETTE_O = "#f97316"
-PALETTE_CELL = "#233244"
-BOARD_FONT = ("Segoe UI", 18, "bold")
-TEXT_FONT = ("Segoe UI", 11, "normal")
-TITLE_FONT = ("Segoe UI", 13, "bold")
+PALETTE_DEFAULT = {
+    "BG": "#0f172a",
+    "PANEL": "#1e293b",
+    "ACCENT": "#38bdf8",
+    "TEXT": "#e2e8f0",
+    "MUTED": "#94a3b8",
+    "BTN": "#0ea5e9",
+    "O": "#f97316",
+    "CELL": "#233244",
+}
+
+PALETTE_HIGH_CONTRAST = {
+    "BG": "#000000",
+    "PANEL": "#111111",
+    "ACCENT": "#ffeb3b",
+    "TEXT": "#ffffff",
+    "MUTED": "#cccccc",
+    "BTN": "#ff9800",
+    "O": "#ff5722",
+    "CELL": "#1f1f1f",
+}
+
+FONTS_DEFAULT = {
+    "board": ("Segoe UI", 18, "bold"),
+    "text": ("Segoe UI", 11, "normal"),
+    "title": ("Segoe UI", 13, "bold"),
+}
+
+FONTS_LARGE = {
+    "board": ("Segoe UI", 22, "bold"),
+    "text": ("Segoe UI", 13, "normal"),
+    "title": ("Segoe UI", 15, "bold"),
+}
 
 
 class GameSession:
@@ -70,6 +92,10 @@ class TicTacToeGUI:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.root.title("Tic-Tac-Toe")
+        self.palette = dict(PALETTE_DEFAULT)
+        self.fonts = dict(FONTS_DEFAULT)
+        self.high_contrast = tk.BooleanVar(value=False)
+        self.large_fonts = tk.BooleanVar(value=False)
         self._configure_style()
         self.session = GameSession()
 
@@ -87,6 +113,12 @@ class TicTacToeGUI:
         self._build_layout()
         self._refresh_scoreboard()
         self._bind_keys()
+
+    def _color(self, key: str) -> str:
+        return self.palette[key]
+
+    def _font(self, key: str):
+        return self.fonts[key]
 
     def _build_layout(self) -> None:
         container = ttk.Frame(self.root, padding=10, style="App.TFrame")
@@ -118,59 +150,90 @@ class TicTacToeGUI:
         self.root.bind("N", lambda _e: self.start_new_game())
 
     def _configure_style(self) -> None:
-        self.root.configure(bg=PALETTE_BG)
+        self.root.configure(bg=self._color("BG"))
         style = ttk.Style(self.root)
         try:
             style.theme_use("clam")
         except tk.TclError:
             pass
 
-        style.configure("App.TFrame", background=PALETTE_BG)
-        style.configure("Panel.TFrame", background=PALETTE_PANEL, relief="flat")
-        style.configure("App.TLabel", background=PALETTE_BG, foreground=PALETTE_TEXT, font=TEXT_FONT)
-        style.configure("Title.TLabel", background=PALETTE_PANEL, foreground=PALETTE_TEXT, font=TITLE_FONT)
-        style.configure("Status.TLabel", background=PALETTE_BG, foreground=PALETTE_ACCENT, font=TITLE_FONT)
-        style.configure("Muted.TLabel", background=PALETTE_PANEL, foreground=PALETTE_MUTED, font=TEXT_FONT)
+        style.configure("App.TFrame", background=self._color("BG"))
+        style.configure("Panel.TFrame", background=self._color("PANEL"), relief="flat")
+        style.configure("App.TLabel", background=self._color("BG"), foreground=self._color("TEXT"), font=self._font("text"))
+        style.configure("Title.TLabel", background=self._color("PANEL"), foreground=self._color("TEXT"), font=self._font("title"))
+        style.configure("Status.TLabel", background=self._color("BG"), foreground=self._color("ACCENT"), font=self._font("title"))
+        style.configure("Muted.TLabel", background=self._color("PANEL"), foreground=self._color("MUTED"), font=self._font("text"))
         style.configure(
             "App.TCheckbutton",
-            background=PALETTE_PANEL,
-            foreground=PALETTE_TEXT,
-            font=TEXT_FONT,
-            focuscolor=PALETTE_PANEL,
+            background=self._color("PANEL"),
+            foreground=self._color("TEXT"),
+            font=self._font("text"),
+            focuscolor=self._color("PANEL"),
         )
 
         style.configure(
             "Panel.TButton",
             padding=8,
-            background=PALETTE_PANEL,
-            foreground=PALETTE_TEXT,
+            background=self._color("PANEL"),
+            foreground=self._color("TEXT"),
         )
 
         style.configure(
             "Accent.TButton",
             padding=8,
-            background=PALETTE_BTN,
-            foreground=PALETTE_BG,
+            background=self._color("BTN"),
+            foreground=self._color("BG"),
         )
         style.map(
             "Accent.TButton",
-            background=[("active", PALETTE_ACCENT)],
-            foreground=[("active", PALETTE_BG)],
+            background=[("active", self._color("ACCENT"))],
+            foreground=[("active", self._color("BG"))],
         )
 
         style.configure(
             "App.TCombobox",
-            fieldbackground=PALETTE_PANEL,
-            background=PALETTE_PANEL,
-            foreground=PALETTE_TEXT,
+            fieldbackground=self._color("PANEL"),
+            background=self._color("PANEL"),
+            foreground=self._color("TEXT"),
         )
+
+    def _apply_theme(self) -> None:
+        self.palette = dict(PALETTE_HIGH_CONTRAST if self.high_contrast.get() else PALETTE_DEFAULT)
+        self.fonts = dict(FONTS_LARGE if self.large_fonts.get() else FONTS_DEFAULT)
+        self._configure_style()
+
+        for row in self.buttons:
+            for btn in row:
+                btn.configure(
+                    bg=self._color("CELL"),
+                    fg=self._color("TEXT"),
+                    activebackground=self._color("ACCENT"),
+                    activeforeground=self._color("BG"),
+                    highlightbackground=self._color("ACCENT"),
+                    font=self._font("board"),
+                )
+                btn.default_bg = self._color("CELL")  # type: ignore[attr-defined]
+                btn.default_fg = self._color("TEXT")  # type: ignore[attr-defined]
+        self._refresh_board()
+        # update label fonts that were set explicitly
+        if hasattr(self, "status_label"):
+            self.status_label.configure(font=self._font("title"))
+            self.score_label.configure(font=self._font("text"))
+            self.history_label.configure(font=self._font("text"))
+            self.log_label.configure(font=self._font("text"))
+
+    def _toggle_contrast(self) -> None:
+        self._apply_theme()
+
+    def _toggle_font_size(self) -> None:
+        self._apply_theme()
 
     def _build_controls(self, parent: tk.Widget) -> None:
         top = ttk.Frame(parent, padding=10, style="App.TFrame")
         top.grid(row=0, column=0, sticky="ew")
         top.columnconfigure(3, weight=1)
 
-        ttk.Label(top, text="Difficulty:", style="App.TLabel", font=TITLE_FONT).grid(row=0, column=0, sticky="w")
+        ttk.Label(top, text="Difficulty:", style="App.TLabel", font=self._font("title")).grid(row=0, column=0, sticky="w")
         self.diff_var = tk.StringVar(value="Easy")
         diff_menu = ttk.Combobox(
             top,
@@ -183,7 +246,7 @@ class TicTacToeGUI:
         diff_menu.grid(row=0, column=1, padx=5)
         diff_menu.bind("<<ComboboxSelected>>", self._on_diff_change)
 
-        ttk.Label(top, text="Personality:", style="App.TLabel", font=TITLE_FONT).grid(row=0, column=2, sticky="w")
+        ttk.Label(top, text="Personality:", style="App.TLabel", font=self._font("title")).grid(row=0, column=2, sticky="w")
         self.personality_var = tk.StringVar(value="balanced")
         self.personality_menu = ttk.Combobox(
             top,
@@ -220,19 +283,19 @@ class TicTacToeGUI:
                     text=" ",
                     command=lambda i=idx: self._handle_player_move(i),
                     width=4,
-                    font=BOARD_FONT,
-                    bg=PALETTE_CELL,
-                    fg=PALETTE_TEXT,
-                    activebackground=PALETTE_ACCENT,
-                    activeforeground=PALETTE_BG,
+                    font=self._font("board"),
+                    bg=self._color("CELL"),
+                    fg=self._color("TEXT"),
+                    activebackground=self._color("ACCENT"),
+                    activeforeground=self._color("BG"),
                     relief="raised",
                     bd=2,
                     highlightthickness=2,
-                    highlightbackground=PALETTE_ACCENT,
+                    highlightbackground=self._color("ACCENT"),
                     cursor="hand2",
                 )
-                btn.default_bg = PALETTE_CELL  # type: ignore[attr-defined]
-                btn.default_fg = PALETTE_TEXT  # type: ignore[attr-defined]
+                btn.default_bg = self._color("CELL")  # type: ignore[attr-defined]
+                btn.default_fg = self._color("TEXT")  # type: ignore[attr-defined]
                 btn.bind("<Enter>", lambda _e, b=btn: self._hover_on(b))
                 btn.bind("<Leave>", lambda _e, b=btn: self._hover_off(b))
                 btn.grid(row=r + 1, column=c, padx=6, pady=6, sticky="nsew")
@@ -245,15 +308,19 @@ class TicTacToeGUI:
         info.columnconfigure(0, weight=1)
 
         ttk.Label(info, text="Status", style="Title.TLabel").grid(row=0, column=0, sticky="w")
-        ttk.Label(info, textvariable=self.status_var, style="Status.TLabel", font=TITLE_FONT, wraplength=260).grid(row=1, column=0, sticky="w", pady=(2, 8))
+        self.status_label = ttk.Label(info, textvariable=self.status_var, style="Status.TLabel", font=self._font("title"), wraplength=260)
+        self.status_label.grid(row=1, column=0, sticky="w", pady=(2, 8))
 
         ttk.Label(info, text="Scoreboard", style="Title.TLabel").grid(row=2, column=0, sticky="w", pady=(6, 0))
-        ttk.Label(info, textvariable=self.score_var, style="App.TLabel", font=TEXT_FONT, wraplength=260, justify="left").grid(row=3, column=0, sticky="w", pady=(2, 10))
+        self.score_label = ttk.Label(info, textvariable=self.score_var, style="App.TLabel", font=self._font("text"), wraplength=260, justify="left")
+        self.score_label.grid(row=3, column=0, sticky="w", pady=(2, 10))
 
         ttk.Label(info, text="Recent Results", style="Title.TLabel").grid(row=4, column=0, sticky="w")
-        ttk.Label(info, textvariable=self.history_var, style="App.TLabel", font=TEXT_FONT, wraplength=260, justify="left").grid(row=5, column=0, sticky="w", pady=(2, 10))
+        self.history_label = ttk.Label(info, textvariable=self.history_var, style="App.TLabel", font=self._font("text"), wraplength=260, justify="left")
+        self.history_label.grid(row=5, column=0, sticky="w", pady=(2, 10))
 
-        ttk.Label(info, textvariable=self.log_path_var, style="Muted.TLabel", font=TEXT_FONT, wraplength=260, justify="left").grid(row=6, column=0, sticky="w", pady=(4, 8))
+        self.log_label = ttk.Label(info, textvariable=self.log_path_var, style="Muted.TLabel", font=self._font("text"), wraplength=260, justify="left")
+        self.log_label.grid(row=6, column=0, sticky="w", pady=(4, 8))
 
         btn_row = ttk.Frame(info, style="Panel.TFrame")
         btn_row.grid(row=7, column=0, sticky="ew", pady=(4, 0))
@@ -266,6 +333,8 @@ class TicTacToeGUI:
         ttk.Checkbutton(opts, text="Require confirmations", variable=self.confirm_moves, style="App.TCheckbutton").grid(row=0, column=0, sticky="w", pady=2)
         ttk.Checkbutton(opts, text="Auto-start next game", variable=self.auto_start, style="App.TCheckbutton").grid(row=1, column=0, sticky="w", pady=2)
         ttk.Checkbutton(opts, text="Rotate history filenames", variable=self.rotate_logs, style="App.TCheckbutton").grid(row=2, column=0, sticky="w", pady=2)
+        ttk.Checkbutton(opts, text="High contrast", variable=self.high_contrast, style="App.TCheckbutton", command=self._toggle_contrast).grid(row=3, column=0, sticky="w", pady=2)
+        ttk.Checkbutton(opts, text="Larger fonts", variable=self.large_fonts, style="App.TCheckbutton", command=self._toggle_font_size).grid(row=4, column=0, sticky="w", pady=2)
 
         ttk.Button(info, text="View history", style="Panel.TButton", command=self._view_history_popup).grid(row=9, column=0, sticky="ew", pady=(10, 2))
         ttk.Button(info, text="Save history now", style="Panel.TButton", command=self._save_history_now).grid(row=10, column=0, sticky="ew", pady=(2, 0))
@@ -298,22 +367,22 @@ class TicTacToeGUI:
                 btn = self.buttons[r][c]
                 btn["text"] = val
                 if val == "X":
-                    btn.configure(fg=PALETTE_ACCENT, bg=btn.default_bg)
+                    btn.configure(fg=self._color("ACCENT"), bg=btn.default_bg)
                 elif val == "O":
-                    btn.configure(fg=PALETTE_O, bg=btn.default_bg)
+                    btn.configure(fg=self._color("O"), bg=btn.default_bg)
                 else:
-                    btn.configure(fg=PALETTE_TEXT, bg=btn.default_bg)
+                    btn.configure(fg=self._color("TEXT"), bg=btn.default_bg)
 
     def _hover_on(self, btn: tk.Button) -> None:
         if btn["text"] == " ":
-            btn.configure(bg=PALETTE_ACCENT, fg=PALETTE_BG, relief="solid")
+            btn.configure(bg=self._color("ACCENT"), fg=self._color("BG"), relief="solid")
 
     def _hover_off(self, btn: tk.Button) -> None:
         val = btn["text"]
         if val == "X":
-            btn.configure(bg=btn.default_bg, fg=PALETTE_ACCENT, relief="raised")
+            btn.configure(bg=btn.default_bg, fg=self._color("ACCENT"), relief="raised")
         elif val == "O":
-            btn.configure(bg=btn.default_bg, fg=PALETTE_O, relief="raised")
+            btn.configure(bg=btn.default_bg, fg=self._color("O"), relief="raised")
         else:
             btn.configure(bg=btn.default_bg, fg=btn.default_fg, relief="raised")
 
@@ -397,8 +466,8 @@ class TicTacToeGUI:
         r, c = divmod(idx, 3)
         btn = self.buttons[r][c]
         original = btn.cget("bg")
-        btn.configure(bg=PALETTE_ACCENT, fg=PALETTE_BG, relief="solid")
-        self.root.after(220, lambda: btn.configure(bg=original, fg=PALETTE_O, relief="raised"))
+        btn.configure(bg=self._color("ACCENT"), fg=self._color("BG"), relief="solid")
+        self.root.after(220, lambda: btn.configure(bg=original, fg=self._color("O"), relief="raised"))
 
     def _undo_move(self) -> None:
         if self.session.game_over or self.last_move_idx is None:
@@ -421,7 +490,7 @@ class TicTacToeGUI:
         hint_idx = module.ai_move_hard(board_copy)
         r, c = divmod(hint_idx, 3)
         btn = self.buttons[r][c]
-        btn.configure(bg=PALETTE_O, fg=PALETTE_BG, relief="solid")
+        btn.configure(bg=self._color("O"), fg=self._color("BG"), relief="solid")
         self.root.after(300, lambda: self._refresh_board())
         self.status_var.set(f"Hint: consider row {r + 1}, column {c + 1}.")
 
@@ -431,8 +500,15 @@ class TicTacToeGUI:
             return
         popup = tk.Toplevel(self.root)
         popup.title("Recent history")
-        popup.configure(bg=PALETTE_BG)
-        text = tk.Text(popup, width=40, height=10, bg=PALETTE_PANEL, fg=PALETTE_TEXT, insertbackground=PALETTE_TEXT)
+        popup.configure(bg=self._color("BG"))
+        text = tk.Text(
+            popup,
+            width=40,
+            height=10,
+            bg=self._color("PANEL"),
+            fg=self._color("TEXT"),
+            insertbackground=self._color("TEXT"),
+        )
         text.pack(fill="both", expand=True, padx=10, pady=10)
         for diff, result, ts in self.session.history[-20:]:
             text.insert("end", f"{ts} - {diff}: {result}\n")
