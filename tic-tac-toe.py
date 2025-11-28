@@ -8,8 +8,13 @@ from datetime import datetime
 import tempfile
 from typing import Callable, Dict, List, Optional, Tuple
 
-SCOREBOARD_FILE = "scoreboard"
-HISTORY_FILE = "session_history.log"
+DATA_DIR = "data"
+SCOREBOARD_DIR = os.path.join(DATA_DIR, "scoreboard")
+HISTORY_DIR = os.path.join(DATA_DIR, "history")
+SCOREBOARD_FILE = os.path.join(SCOREBOARD_DIR, "scoreboard.json")
+SCOREBOARD_BACKUP = os.path.join(SCOREBOARD_DIR, "scoreboard.json.bak")
+HISTORY_FILE = os.path.join(HISTORY_DIR, "session_history.log")
+SAFE_MODE = os.getenv("TICTACTOE_SAFE_MODE", "0") not in {"0", "false", "False", "", None}
 SCORE_HASH_KEY = "hash"
 SCORE_DATA_KEY = "data"
 SCORE_PREV_KEY = "previous"
@@ -143,6 +148,9 @@ def _extract_scored_payload(payload: Dict[str, object]) -> Optional[Dict[str, Di
 
 def load_scoreboard(file_path: str = SCOREBOARD_FILE) -> Dict[str, Dict[str, int]]:
     default_scoreboard = _new_scoreboard()
+    if SAFE_MODE:
+        return default_scoreboard
+
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -175,6 +183,9 @@ def load_scoreboard(file_path: str = SCOREBOARD_FILE) -> Dict[str, Dict[str, int
 
 
 def save_scoreboard(score: Dict[str, Dict[str, int]], file_path: str = SCOREBOARD_FILE) -> None:
+    if SAFE_MODE:
+        print("Safe mode enabled; skipping scoreboard save.")
+        return
     previous_payload = None
     try:
         with open(file_path, "r", encoding="utf-8") as f:
@@ -195,6 +206,18 @@ def save_scoreboard(score: Dict[str, Dict[str, int]], file_path: str = SCOREBOAR
         SCORE_PREV_KEY: previous_payload,
     }
     dir_name = os.path.dirname(file_path) or "."
+    backup_path = SCOREBOARD_BACKUP
+    os.makedirs(dir_name, exist_ok=True)
+    try:
+        if os.path.exists(file_path):
+            with open(file_path, "r", encoding="utf-8") as f:
+                current = f.read()
+            os.makedirs(os.path.dirname(backup_path), exist_ok=True)
+            with open(backup_path, "w", encoding="utf-8") as f:
+                f.write(current)
+    except OSError:
+        pass
+
     fd, temp_path = tempfile.mkstemp(dir=dir_name, prefix=".scoreboard.", text=True)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
@@ -211,6 +234,9 @@ def save_scoreboard(score: Dict[str, Dict[str, int]], file_path: str = SCOREBOAR
 
 
 def save_session_history_to_file(history: List[HistoryEntry], file_path: str = HISTORY_FILE, rotate: bool = False) -> str:
+    if SAFE_MODE:
+        print("Safe mode enabled; skipping history save.")
+        return file_path
     if not history:
         print("No session history to save.")
         return file_path
@@ -218,6 +244,8 @@ def save_session_history_to_file(history: List[HistoryEntry], file_path: str = H
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         base, ext = os.path.splitext(file_path)
         file_path = f"{base}_{ts}{ext or '.log'}"
+    dir_name = os.path.dirname(file_path) or "."
+    os.makedirs(dir_name, exist_ok=True)
     try:
         with open(file_path, "a", encoding="utf-8") as f:
             for diff, result, ts, duration in history:

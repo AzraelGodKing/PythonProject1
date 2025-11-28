@@ -4,5 +4,6 @@
 !gui.py
 !tic-tac-toe.py
 !README.md
-!logs/
-!logs/.gitkeep
+!data/
+!data/logs/
+!data/logs/.gitkeep
