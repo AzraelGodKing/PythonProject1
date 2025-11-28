@@ -307,9 +307,17 @@ def get_player_move(board: List[str]) -> Optional[int]:
     """Prompt for a valid move; return None if player quits the round."""
     attempts = 0
     while True:
-        move_text = input("Player X, enter row and column (or single spot 1-9, q to quit): ").strip()
+        move_text = input("Player X, enter row and column (or single spot 1-9, h for hint, q to quit): ").strip()
         if move_text.lower() in {"q", "quit"}:
             return None
+        if move_text.lower() in {"h", "hint"}:
+            hint_idx = best_player_hint(board)
+            if hint_idx is None:
+                print("No available moves to suggest.")
+            else:
+                r, c = divmod(hint_idx, 3)
+                print(f"Hint: try row {r + 1}, column {c + 1}.")
+            continue
         coords = parse_move(move_text)
         if not coords:
             attempts += 1
@@ -495,14 +503,14 @@ def ai_move_hard(board: List[str]) -> int:
 
 
 def best_player_hint(board: List[str]) -> Optional[int]:
-    """Suggest the best move for player X by minimizing the AI's resulting score."""
+    """Suggest the best move for the player (X) by minimizing the AI's outcome."""
     best_score = float("inf")
     best_idx: Optional[int] = None
     for idx, cell in enumerate(board):
         if cell != " ":
             continue
         board[idx] = "X"
-        score = _minimax(board, True, 0)
+        score = _minimax(board, True, 0)  # AI to move next; lower is better for player
         board[idx] = " "
         if score < best_score:
             best_score = score
