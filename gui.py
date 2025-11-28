@@ -172,6 +172,7 @@ class TicTacToeGUI:
         self.match_over = False
         self.options_popup: Optional[tk.Toplevel] = None
         self.history_popup: Optional[tk.Toplevel] = None
+        self.achievements_popup: Optional[tk.Toplevel] = None
 
         self.status_var = tk.StringVar(value="Choose a difficulty and start a game.")
         self.score_var = tk.StringVar()
@@ -624,6 +625,7 @@ class TicTacToeGUI:
         ttk.Button(info, text="Options", style="Panel.TButton", command=self._show_options_popup).grid(row=12, column=0, sticky="ew", pady=(8, 2))
         ttk.Button(info, text="View history", style="Panel.TButton", command=self._view_history_popup).grid(row=13, column=0, sticky="ew", pady=(6, 2))
         ttk.Button(info, text="Save history now", style="Panel.TButton", command=self._save_history_now).grid(row=14, column=0, sticky="ew", pady=(2, 0))
+        ttk.Button(info, text="View achievements", style="Panel.TButton", command=self._show_achievements_popup).grid(row=15, column=0, sticky="ew", pady=(6, 0))
 
     def _on_diff_change(self, _event=None) -> None:
         self._apply_selection()
@@ -688,6 +690,9 @@ class TicTacToeGUI:
             self.history_var.set("Recent: " + " | ".join(f"{d}: {r}" for d, r, _ in recent))
         else:
             self.history_var.set("Recent: none")
+        # Update achievements popup if open
+        if self.achievements_popup and self.achievements_popup.winfo_exists():
+            self._populate_achievements(self.achievements_popup)
 
     def start_new_game(self) -> None:
         if self.pending_ai_id:
@@ -819,6 +824,69 @@ class TicTacToeGUI:
             self.history_popup = None
             popup.destroy()
         popup.protocol("WM_DELETE_WINDOW", on_close)
+
+    def _compute_session_achievements(self) -> list:
+        total_wins = sum(1 for _, res, _ in self.session.history if res == "X")
+        hard_wins = sum(1 for diff, res, _ in self.session.history if diff.startswith("Hard") and res == "X")
+        streak = 0
+        best_streak = 0
+        for _, res, _ in self.session.history:
+            if res == "X":
+                streak += 1
+                best_streak = max(best_streak, streak)
+            else:
+                streak = 0
+
+        achievements = []
+        if total_wins >= 1:
+            achievements.append("First win!")
+        if total_wins >= 5:
+            achievements.append("Win 5 games in this session.")
+        if best_streak >= 3:
+            achievements.append(f"Hot streak: {best_streak} wins in a row.")
+        if hard_wins >= 1:
+            achievements.append("Cracked Hard mode once.")
+        if hard_wins >= 3:
+            achievements.append("Hard mode regular (3+ wins in session).")
+        if not achievements:
+            achievements.append("None yet. Keep playing!")
+        return achievements
+
+    def _populate_achievements(self, popup: tk.Toplevel) -> None:
+        for child in popup.winfo_children():
+            child.destroy()
+        ttk.Label(popup, text="Achievements (session)", style="Title.TLabel").pack(anchor="w", padx=10, pady=(8, 4))
+        text = tk.Text(
+            popup,
+            width=40,
+            height=10,
+            bg=self._color("PANEL"),
+            fg=self._color("TEXT"),
+            insertbackground=self._color("TEXT"),
+            relief="flat",
+        )
+        text.pack(fill="both", expand=True, padx=10, pady=4)
+        for item in self._compute_session_achievements():
+            text.insert("end", f"- {item}\n")
+        text.configure(state="disabled")
+
+    def _show_achievements_popup(self) -> None:
+        if self.achievements_popup and self.achievements_popup.winfo_exists():
+            self.achievements_popup.lift()
+            self.achievements_popup.focus_set()
+            return
+        popup = tk.Toplevel(self.root)
+        popup.title("Achievements")
+        popup.configure(bg=self._color("BG"))
+        self.achievements_popup = popup
+        popup.protocol("WM_DELETE_WINDOW", lambda: self._close_achievements_popup(popup))
+        self._populate_achievements(popup)
+
+    def _close_achievements_popup(self, popup: tk.Toplevel) -> None:
+        try:
+            popup.destroy()
+        finally:
+            self.achievements_popup = None
 
     def _save_history_now(self) -> None:
         if not self.session.history:
