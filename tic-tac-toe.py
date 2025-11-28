@@ -16,6 +16,7 @@ SCOREBOARD_BACKUP = os.path.join(SCOREBOARD_DIR, "scoreboard.json.bak")
 HISTORY_FILE = os.path.join(HISTORY_DIR, "session_history.log")
 SAFE_MODE = os.getenv("TICTACTOE_SAFE_MODE", "0") not in {"0", "false", "False", "", None}
 SAFE_MODE_MESSAGE = "Safe mode enabled; skipping persistence."
+DEFAULT_MATCH_LENGTH = 3
 SCORE_HASH_KEY = "hash"
 SCORE_DATA_KEY = "data"
 SCORE_PREV_KEY = "previous"
@@ -728,6 +729,22 @@ def choose_normal_personality() -> Tuple[str, Callable[[List[str]], int]]:
         print("Please enter 1-5 or a personality name (balanced/defensive/aggressive/misdirection/mirror).")
 
 
+def choose_match_length() -> int:
+    while True:
+        text = input(f"Choose match length (odd number, best-of). Press Enter for default {DEFAULT_MATCH_LENGTH}: ").strip()
+        if not text:
+            return DEFAULT_MATCH_LENGTH
+        if text.isdigit():
+            val = int(text)
+            if val >= 1 and val % 2 == 1:
+                return val
+        print("Please enter an odd number like 3, 5, or 7 (or press Enter for default).")
+
+
+def print_match_score(match_wins: Dict[str, int], target: int) -> None:
+    print(f"Match score (target {target} wins): X={match_wins['X']}  O={match_wins['O']}  Draws={match_wins['Draw']}")
+
+
 def choose_difficulty() -> Tuple[str, Callable[[List[str]], int], str]:
     options = {
         "1": "Easy",
@@ -824,10 +841,14 @@ def play_session(scoreboard: Dict[str, Dict[str, int]]) -> Dict[str, Dict[str, i
     diff_key, ai_move_fn, personality = choose_difficulty()
     difficulty_label = difficulty_display_label(diff_key, personality)
     print(f"Starting game on {difficulty_label}.")
+    match_length = choose_match_length()
+    match_target = (match_length // 2) + 1
+    match_wins = {"X": 0, "O": 0, "Draw": 0}
 
     while True:
         print_history(session_history)
         print_stats(stats)
+        print_match_score(match_wins, match_target)
 
         result = play_round(ai_move_fn, difficulty_label)
         if result is None:
@@ -844,11 +865,29 @@ def play_session(scoreboard: Dict[str, Dict[str, int]]) -> Dict[str, Dict[str, i
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         session_history.append((difficulty_label, winner, timestamp, duration))
         update_stats(stats, diff_key, winner, duration)
+        match_wins[winner] = match_wins.get(winner, 0) + 1
 
         save_scoreboard(scoreboard)
         print_scoreboard(scoreboard)
         print_stats(stats)
         print_history(session_history)
+        print_match_score(match_wins, match_target)
+
+        if match_wins["X"] >= match_target or match_wins["O"] >= match_target:
+            match_winner = "X" if match_wins["X"] > match_wins["O"] else "O"
+            print(f"Match over! Winner: {match_winner}")
+            another_match = input("Start another match? (y/n): ").strip().lower()
+            if another_match in {"y", "yes"}:
+                match_length = choose_match_length()
+                match_target = (match_length // 2) + 1
+                match_wins = {"X": 0, "O": 0, "Draw": 0}
+                change_diff = input("Change difficulty/personality for next match? (y/n): ").strip().lower()
+                if change_diff in {"y", "yes"}:
+                    diff_key, ai_move_fn, personality = choose_difficulty()
+                    difficulty_label = difficulty_display_label(diff_key, personality)
+                    print(f"Switched to {difficulty_label}.")
+                continue
+            break
 
         again = input("Play again? (y/n): ").strip().lower()
         if again not in {"y", "yes"}:
