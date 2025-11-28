@@ -3,6 +3,7 @@
 !.gitignore
 !gui.py
 !tic-tac-toe.py
+!options.py
 !README.md
 !data/
 !data/logs/

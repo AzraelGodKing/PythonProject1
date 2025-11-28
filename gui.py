@@ -14,6 +14,7 @@ import atexit
 import math
 from typing import Optional
 from tkinter import messagebox, ttk
+import options
 
 
 MODULE_PATH = pathlib.Path(__file__).with_name("tic-tac-toe.py")
@@ -1236,64 +1237,7 @@ class TicTacToeGUI:
             pass
 
     def _show_options_popup(self) -> None:
-        if self.options_popup and self.options_popup.winfo_exists():
-            self.options_popup.lift()
-            self.options_popup.focus_set()
-            return
-        popup = tk.Toplevel(self.root)
-        popup.title("Options")
-        popup.configure(bg=self._color("BG"))
-        self.options_popup = popup
-        frame = ttk.Frame(popup, padding=12, style="App.TFrame")
-        frame.grid(row=0, column=0, sticky="nsew")
-        popup.columnconfigure(0, weight=1)
-        popup.rowconfigure(0, weight=1)
-
-        ttk.Label(frame, text="Options", style="Title.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 6))
-
-        ttk.Checkbutton(frame, text="Require confirmations", variable=self.confirm_moves, style="App.TCheckbutton", command=self._toggle_confirm).grid(row=1, column=0, sticky="w", pady=2)
-        ttk.Checkbutton(frame, text="Auto-start next game", variable=self.auto_start, style="App.TCheckbutton", command=self._toggle_auto_start).grid(row=2, column=0, sticky="w", pady=2)
-        ttk.Checkbutton(frame, text="Rotate history filenames", variable=self.rotate_logs, style="App.TCheckbutton", command=self._toggle_rotate_logs).grid(row=3, column=0, sticky="w", pady=2)
-        ttk.Checkbutton(frame, text="Larger fonts", variable=self.large_fonts, style="App.TCheckbutton", command=self._toggle_font_size).grid(row=4, column=0, sticky="w", pady=2)
-        ttk.Checkbutton(frame, text="Animations", variable=self.animations_enabled, style="App.TCheckbutton", command=self._toggle_animations).grid(row=5, column=0, sticky="w", pady=2)
-        ttk.Checkbutton(frame, text="Sound cues", variable=self.sound_enabled, style="App.TCheckbutton", command=self._toggle_sound).grid(row=6, column=0, sticky="w", pady=2)
-        ttk.Checkbutton(frame, text="Show board coordinates", variable=self.show_coords, style="App.TCheckbutton", command=self._toggle_show_coords).grid(row=7, column=0, sticky="w", pady=2)
-
-        ttk.Button(frame, text="No animation/sound preset", style="Panel.TButton", command=self._disable_motion_sound).grid(row=8, column=0, sticky="ew", pady=(6, 2))
-        ttk.Button(frame, text="Reset toggles to default", style="Panel.TButton", command=self._reset_toggles).grid(row=9, column=0, sticky="ew", pady=(2, 4))
-
-        ttk.Label(frame, text="Theme", style="Title.TLabel").grid(row=9, column=0, sticky="w", pady=(8, 2))
-        theme_box = ttk.Combobox(
-            frame,
-            textvariable=self.theme_var,
-            state="readonly",
-            values=[
-                "default",
-                "high_contrast",
-                "colorblind_protan",
-                "colorblind_deutan",
-                "colorblind_tritan",
-                "monochrome",
-                "light",
-            ],
-            style="App.TCombobox",
-            width=20,
-        )
-        theme_box.grid(row=10, column=0, sticky="ew", pady=(0, 4))
-        theme_box.bind("<<ComboboxSelected>>", self._on_theme_change)
-
-        swatch = tk.Canvas(frame, height=20, bg=self._color("PANEL"), highlightthickness=0)
-        swatch.grid(row=11, column=0, sticky="ew", pady=(0, 6))
-        self._update_theme_swatch(swatch)
-
-        ttk.Button(frame, text="Copy diagnostics", style="Panel.TButton", command=self._copy_diagnostics).grid(row=12, column=0, sticky="ew", pady=(6, 0))
-        ttk.Button(frame, text="Close", style="Panel.TButton", command=lambda: self._close_options_popup(popup)).grid(row=13, column=0, sticky="e", pady=(10, 0))
-
-    def _close_options_popup(self, popup: tk.Toplevel) -> None:
-        try:
-            popup.destroy()
-        finally:
-            self.options_popup = None
+        options.show_options_popup(self)
 
 
 
