@@ -164,6 +164,7 @@ class TicTacToeGUI:
         self.theme_var = tk.StringVar(value=settings["theme"])
         self.animations_enabled = tk.BooleanVar(value=settings["animations"])
         self.sound_enabled = tk.BooleanVar(value=settings["sound"])
+        self.show_coords = tk.BooleanVar(value=settings["show_coords"])
         self.palette = self._resolve_palette(self.theme_var.get())
         self.fonts = dict(FONTS_LARGE if self.large_fonts.get() else FONTS_DEFAULT)
         self._configure_style()
@@ -195,6 +196,7 @@ class TicTacToeGUI:
         atexit.register(self._shutdown_logger)
         self.root.report_callback_exception = self._handle_exception
         self.player_turn = True
+        self._build_menu()
 
     def _color(self, key: str) -> str:
         return self.palette[key]
@@ -292,6 +294,25 @@ class TicTacToeGUI:
         self.root.bind("n", lambda _e: self.start_new_game())
         self.root.bind("N", lambda _e: self.start_new_game())
 
+    def _build_menu(self) -> None:
+        menubar = tk.Menu(self.root)
+        game_menu = tk.Menu(menubar, tearoff=0)
+        game_menu.add_command(label="New Game", command=self.start_new_game, accelerator="Ctrl+N")
+        game_menu.add_command(label="New Match", command=self._new_match)
+        game_menu.add_separator()
+        game_menu.add_command(label="Save History", command=self._save_history_now)
+        game_menu.add_separator()
+        game_menu.add_command(label="Exit", command=self.root.quit)
+        menubar.add_cascade(label="Game", menu=game_menu)
+
+        view_menu = tk.Menu(menubar, tearoff=0)
+        view_menu.add_command(label="Achievements", command=self._show_achievements_popup)
+        view_menu.add_command(label="History", command=self._view_history_popup)
+        view_menu.add_command(label="Options", command=self._show_options_popup)
+        menubar.add_cascade(label="View", menu=view_menu)
+
+        self.root.config(menu=menubar)
+
     def _load_settings(self) -> dict:
         defaults = {
             "confirm_moves": True,
@@ -301,6 +322,7 @@ class TicTacToeGUI:
             "large_fonts": False,
             "animations": True,
             "sound": True,
+            "show_coords": False,
         }
         data = None
         try:
@@ -344,6 +366,7 @@ class TicTacToeGUI:
             "large_fonts": bool(data.get("large_fonts", defaults["large_fonts"])),
             "animations": bool(data.get("animations", defaults["animations"])),
             "sound": bool(data.get("sound", defaults["sound"])),
+            "show_coords": bool(data.get("show_coords", defaults["show_coords"])),
         }
 
     def _save_settings(self) -> None:
@@ -355,6 +378,7 @@ class TicTacToeGUI:
             "large_fonts": self.large_fonts.get(),
             "animations": self.animations_enabled.get(),
             "sound": self.sound_enabled.get(),
+            "show_coords": self.show_coords.get(),
         }
         try:
             # write backup first
@@ -502,8 +526,34 @@ class TicTacToeGUI:
     def _toggle_sound(self) -> None:
         self._save_settings()
 
+    def _toggle_show_coords(self) -> None:
+        self._refresh_board()
+        self._save_settings()
+
+    def _disable_motion_sound(self) -> None:
+        self.animations_enabled.set(False)
+        self.sound_enabled.set(False)
+        self._save_settings()
+
     def _on_theme_change(self, _event=None) -> None:
         self._apply_theme()
+        if self.options_popup and self.options_popup.winfo_exists():
+            swatch = None
+            for child in self.options_popup.winfo_children():
+                for grand in child.winfo_children():
+                    if isinstance(grand, tk.Canvas):
+                        swatch = grand
+                        break
+            if swatch:
+                self._update_theme_swatch(swatch)
+
+    def _update_theme_swatch(self, canvas: tk.Canvas) -> None:
+        canvas.delete("all")
+        colors = [self._color(k) for k in ("BG", "PANEL", "ACCENT", "TEXT", "O")]
+        width = canvas.winfo_width() or 200
+        segment = width // len(colors)
+        for i, col in enumerate(colors):
+            canvas.create_rectangle(i * segment, 0, (i + 1) * segment, 20, fill=col, outline=col)
 
     def _build_controls(self, parent: tk.Widget) -> None:
         top = ttk.Frame(parent, padding=10, style="App.TFrame")
@@ -543,7 +593,7 @@ class TicTacToeGUI:
         self.reset_btn.grid(row=0, column=5, padx=5)
 
         ttk.Label(top, text="Match (best of):", style="App.TLabel", font=self._font("title")).grid(row=0, column=6, sticky="w", padx=(10, 0))
-        self.match_entry = ttk.Entry(top, textvariable=self.match_length_var, width=5)
+        self.match_entry = ttk.Entry(top, textvariable=self.match_length_var, width=6)
         self.match_entry.grid(row=0, column=7, padx=4, sticky="w")
         ttk.Button(top, text="New Match", style="Panel.TButton", command=self._new_match).grid(row=0, column=8, padx=4)
 
@@ -572,7 +622,7 @@ class TicTacToeGUI:
                     activeforeground=self._color("BG"),
                     relief="raised",
                     bd=2,
-                    highlightthickness=2,
+                    highlightthickness=1,
                     highlightbackground=self._color("ACCENT"),
                     cursor="hand2",
                 )
@@ -589,21 +639,23 @@ class TicTacToeGUI:
         info.grid(row=0, column=0, sticky="nsew")
         info.columnconfigure(0, weight=1)
 
-        ttk.Label(info, text="Status", style="Title.TLabel").grid(row=0, column=0, sticky="w")
-        self.status_label = ttk.Label(info, textvariable=self.status_var, style="Status.TLabel", font=self._font("title"), wraplength=260)
-        self.status_label.grid(row=1, column=0, sticky="w", pady=(2, 8))
+        status_frame = ttk.Frame(info, style="Panel.TFrame")
+        status_frame.grid(row=0, column=0, sticky="ew", pady=(0, 4))
+        ttk.Label(status_frame, text="Status", style="Title.TLabel").grid(row=0, column=0, sticky="w")
+        self.status_label = ttk.Label(status_frame, textvariable=self.status_var, style="Status.TLabel", font=self._font("title"), wraplength=260)
+        self.status_label.grid(row=1, column=0, sticky="w", pady=(2, 6))
 
-        ttk.Label(info, text="Scoreboard", style="Title.TLabel").grid(row=2, column=0, sticky="w", pady=(6, 0))
+        ttk.Label(info, text="Scoreboard", style="Title.TLabel").grid(row=2, column=0, sticky="w", pady=(4, 0))
         self.score_label = ttk.Label(info, textvariable=self.score_var, style="App.TLabel", font=self._font("text"), wraplength=260, justify="left")
-        self.score_label.grid(row=3, column=0, sticky="w", pady=(2, 10))
+        self.score_label.grid(row=3, column=0, sticky="w", pady=(2, 6))
 
         ttk.Label(info, text="Match Score", style="Title.TLabel").grid(row=4, column=0, sticky="w")
         self.match_label = ttk.Label(info, textvariable=self.match_var, style="App.TLabel", font=self._font("text"), wraplength=260, justify="left")
-        self.match_label.grid(row=5, column=0, sticky="w", pady=(2, 10))
+        self.match_label.grid(row=5, column=0, sticky="w", pady=(2, 6))
 
         ttk.Label(info, text="Recent Results", style="Title.TLabel").grid(row=6, column=0, sticky="w")
         self.history_label = ttk.Label(info, textvariable=self.history_var, style="App.TLabel", font=self._font("text"), wraplength=260, justify="left")
-        self.history_label.grid(row=7, column=0, sticky="w", pady=(2, 10))
+        self.history_label.grid(row=7, column=0, sticky="w", pady=(2, 6))
 
         self.log_label = ttk.Label(info, textvariable=self.log_path_var, style="Muted.TLabel", font=self._font("text"), wraplength=260, justify="left")
         self.log_label.grid(row=8, column=0, sticky="w", pady=(4, 8))
@@ -624,10 +676,10 @@ class TicTacToeGUI:
         ttk.Button(btn_row, text="Hint", style="Panel.TButton", command=self._show_hint).grid(row=0, column=0, sticky="ew", padx=3)
         ttk.Button(btn_row, text="Undo Move", style="Panel.TButton", command=self._undo_move).grid(row=0, column=1, sticky="ew", padx=3)
 
-        ttk.Button(info, text="Options", style="Panel.TButton", command=self._show_options_popup).grid(row=12, column=0, sticky="ew", pady=(8, 2))
-        ttk.Button(info, text="View history", style="Panel.TButton", command=self._view_history_popup).grid(row=13, column=0, sticky="ew", pady=(6, 2))
-        ttk.Button(info, text="Save history now", style="Panel.TButton", command=self._save_history_now).grid(row=14, column=0, sticky="ew", pady=(2, 0))
-        ttk.Button(info, text="View achievements", style="Panel.TButton", command=self._show_achievements_popup).grid(row=15, column=0, sticky="ew", pady=(6, 0))
+        ttk.Button(info, text="Options", style="Panel.TButton", command=self._show_options_popup).grid(row=12, column=0, sticky="ew", pady=(6, 2))
+        ttk.Button(info, text="View history", style="Panel.TButton", command=self._view_history_popup).grid(row=13, column=0, sticky="ew", pady=(4, 2))
+        ttk.Button(info, text="Save history now", style="Panel.TButton", command=self._save_history_now).grid(row=14, column=0, sticky="ew", pady=(2, 2))
+        ttk.Button(info, text="View achievements", style="Panel.TButton", command=self._show_achievements_popup).grid(row=15, column=0, sticky="ew", pady=(2, 0))
 
     def _on_diff_change(self, _event=None) -> None:
         self._apply_selection()
@@ -655,7 +707,10 @@ class TicTacToeGUI:
                 idx = r * 3 + c
                 val = self.session.board[idx]
                 btn = self.buttons[r][c]
-                btn["text"] = val
+                if val == " " and self.show_coords.get():
+                    btn["text"] = f"{r+1},{c+1}"
+                else:
+                    btn["text"] = val
                 if val == "X":
                     btn.configure(fg=self._color("ACCENT"), bg=btn.default_bg)
                 elif val == "O":
@@ -962,8 +1017,11 @@ class TicTacToeGUI:
         ttk.Checkbutton(frame, text="Larger fonts", variable=self.large_fonts, style="App.TCheckbutton", command=self._toggle_font_size).grid(row=4, column=0, sticky="w", pady=2)
         ttk.Checkbutton(frame, text="Animations", variable=self.animations_enabled, style="App.TCheckbutton", command=self._toggle_animations).grid(row=5, column=0, sticky="w", pady=2)
         ttk.Checkbutton(frame, text="Sound cues", variable=self.sound_enabled, style="App.TCheckbutton", command=self._toggle_sound).grid(row=6, column=0, sticky="w", pady=2)
+        ttk.Checkbutton(frame, text="Show board coordinates", variable=self.show_coords, style="App.TCheckbutton", command=self._toggle_show_coords).grid(row=7, column=0, sticky="w", pady=2)
 
-        ttk.Label(frame, text="Theme", style="Title.TLabel").grid(row=7, column=0, sticky="w", pady=(8, 2))
+        ttk.Button(frame, text="No animation/sound preset", style="Panel.TButton", command=self._disable_motion_sound).grid(row=8, column=0, sticky="ew", pady=(6, 2))
+
+        ttk.Label(frame, text="Theme", style="Title.TLabel").grid(row=9, column=0, sticky="w", pady=(8, 2))
         theme_box = ttk.Combobox(
             frame,
             textvariable=self.theme_var,
@@ -978,12 +1036,17 @@ class TicTacToeGUI:
                 "light",
             ],
             style="App.TCombobox",
+            width=20,
         )
-        theme_box.grid(row=8, column=0, sticky="ew", pady=(0, 4))
+        theme_box.grid(row=10, column=0, sticky="ew", pady=(0, 4))
         theme_box.bind("<<ComboboxSelected>>", self._on_theme_change)
 
-        ttk.Button(frame, text="Copy diagnostics", style="Panel.TButton", command=self._copy_diagnostics).grid(row=9, column=0, sticky="ew", pady=(6, 0))
-        ttk.Button(frame, text="Close", style="Panel.TButton", command=lambda: self._close_options_popup(popup)).grid(row=10, column=0, sticky="e", pady=(10, 0))
+        swatch = tk.Canvas(frame, height=20, bg=self._color("PANEL"), highlightthickness=0)
+        swatch.grid(row=11, column=0, sticky="ew", pady=(0, 6))
+        self._update_theme_swatch(swatch)
+
+        ttk.Button(frame, text="Copy diagnostics", style="Panel.TButton", command=self._copy_diagnostics).grid(row=12, column=0, sticky="ew", pady=(6, 0))
+        ttk.Button(frame, text="Close", style="Panel.TButton", command=lambda: self._close_options_popup(popup)).grid(row=13, column=0, sticky="e", pady=(10, 0))
 
     def _close_options_popup(self, popup: tk.Toplevel) -> None:
         try:
