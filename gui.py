@@ -281,12 +281,18 @@ class TicTacToeGUI:
         os.makedirs(LOG_DIR, exist_ok=True)
         logger = logging.getLogger("tictactoe_gui")
         logger.setLevel(logging.INFO)
+        # Ensure fresh handler each launch; closed handlers can block writes.
+        for h in list(logger.handlers):
+            logger.removeHandler(h)
+            try:
+                h.close()
+            except Exception:
+                pass
         log_path = os.path.join(LOG_DIR, "app.log")
         handler = RotatingFileHandler(log_path, maxBytes=200_000, backupCount=3, encoding="utf-8", delay=True)
         fmt = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
         handler.setFormatter(fmt)
-        if not logger.handlers:
-            logger.addHandler(handler)
+        logger.addHandler(handler)
         logger.propagate = False
         return logger
 
