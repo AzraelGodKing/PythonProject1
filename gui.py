@@ -13,7 +13,7 @@ import tkinter as tk
 import atexit
 import math
 from typing import Optional
-from tkinter import messagebox, ttk
+from tkinter import messagebox, simpledialog, ttk
 import options
 import ai_vs_ai
 
@@ -174,6 +174,7 @@ class TicTacToeGUI:
         self.sound_enabled = tk.BooleanVar(value=settings["sound"])
         self.show_coords = tk.BooleanVar(value=settings["show_coords"])
         self.show_heatmap = tk.BooleanVar(value=settings.get("show_heatmap", False))
+        self.show_commentary = tk.BooleanVar(value=settings.get("show_commentary", False))
         self.palette = self._resolve_palette(self.theme_var.get())
         self.fonts = dict(FONTS_LARGE if self.large_fonts.get() else FONTS_DEFAULT)
         self._configure_style()
@@ -207,6 +208,7 @@ class TicTacToeGUI:
         self.auto_start = tk.BooleanVar(value=settings["auto_start"])
         self.rotate_logs = tk.BooleanVar(value=settings["rotate_logs"])
         self.show_heatmap = tk.BooleanVar(value=settings.get("show_heatmap", False))
+        self.show_commentary = tk.BooleanVar(value=settings.get("show_commentary", False))
         self.pending_ai_id: Optional[str] = None
         self.last_move_idx: Optional[int] = None
         self.hint_highlight: Optional[int] = None
@@ -220,6 +222,7 @@ class TicTacToeGUI:
         self.player_turn = True
         self._build_menu()
         self._apply_compact_layout()
+        self.move_annotations: list[str] = []
 
     def _color(self, key: str) -> str:
         return self.palette[key]
@@ -385,6 +388,7 @@ class TicTacToeGUI:
             "sound": True,
             "show_coords": False,
             "show_heatmap": False,
+            "show_commentary": False,
             "compact_sidebar": False,
         }
         data = None
@@ -431,6 +435,7 @@ class TicTacToeGUI:
             "sound": bool(data.get("sound", defaults["sound"])),
             "show_coords": bool(data.get("show_coords", defaults["show_coords"])),
             "show_heatmap": bool(data.get("show_heatmap", False)),
+            "show_commentary": bool(data.get("show_commentary", False)),
             "compact_sidebar": bool(data.get("compact_sidebar", defaults["compact_sidebar"])),
         }
 
@@ -445,6 +450,7 @@ class TicTacToeGUI:
             "sound": self.sound_enabled.get(),
             "show_coords": self.show_coords.get(),
             "show_heatmap": self.show_heatmap.get(),
+            "show_commentary": self.show_commentary.get(),
             "compact_sidebar": self.compact_sidebar.get(),
         }
         try:
@@ -613,6 +619,44 @@ class TicTacToeGUI:
         self._refresh_board()
         self._save_settings()
 
+    def _auto_commentary(self, symbol: str, idx: int, pre_board: list[str]) -> None:
+        comment = ""
+        opponent = "O" if symbol == "X" else "X"
+        # win
+        if module.check_winner(self.session.board) == symbol:
+            r, c = divmod(idx, 3)
+            comment = f"{symbol} wins with the strike at {r + 1},{c + 1}!"
+        # block
+        elif module.find_winning_move(pre_board, opponent) == idx:
+            comment = f"Great block by {symbol}."
+        # winning threat
+        elif module.find_winning_move(pre_board, symbol) == idx:
+            comment = f"{symbol} sets up a winning line."
+        # fork creation
+        elif module.find_fork_move(pre_board, symbol) == idx:
+            comment = f"{symbol} builds a fork—multiple threats now."
+        # center/corner flair
+        elif idx == 4:
+            comment = f"{symbol} controls the center."
+        elif idx in (0, 2, 6, 8) and pre_board.count("X") + pre_board.count("O") == 0:
+            comment = f"{symbol} starts from the corner."
+
+        if comment and self.move_annotations:
+            self.move_annotations[-1] = comment
+            self._refresh_move_log()
+
+    def _annotate_last_move(self) -> None:
+        if not self.session.moves:
+            return
+        note = simpledialog.askstring("Annotate move", "Enter a note for the last move (e.g., blunder, brilliant):")
+        if note is None:
+            return
+        if self.move_annotations:
+            self.move_annotations[-1] = note.strip()
+        else:
+            self.move_annotations.append(note.strip())
+        self._refresh_move_log()
+
     def _disable_motion_sound(self) -> None:
         self.animations_enabled.set(False)
         self.sound_enabled.set(False)
@@ -766,6 +810,8 @@ class TicTacToeGUI:
             relief="flat",
         )
         self.move_listbox.grid(row=1, column=0, sticky="nsew", pady=(4, 0))
+        annotate_btn = ttk.Button(log_frame, text="Annotate last move", style="Panel.TButton", command=self._annotate_last_move)
+        annotate_btn.grid(row=2, column=0, sticky="ew", pady=(6, 0))
         log_frame.columnconfigure(0, weight=1)
 
         ttk.Label(log_frame, text="Quick stats", style="App.TLabel", font=self._font("title")).grid(row=2, column=0, sticky="w", pady=(8, 2))
@@ -856,7 +902,13 @@ class TicTacToeGUI:
             return
         self.move_listbox.delete(0, tk.END)
         for i, (idx, symbol) in enumerate(self.session.moves, start=1):
-            self.move_listbox.insert(tk.END, f"{i}. {self._format_move((idx, symbol))}")
+            label = self._format_move((idx, symbol))
+            note = ""
+            if i - 1 < len(self.move_annotations):
+                note = self.move_annotations[i - 1]
+            if note:
+                label += f"  ({note})"
+            self.move_listbox.insert(tk.END, f"{i}. {label}")
         if self.session.moves:
             self.move_listbox.see(tk.END)
 
@@ -1004,6 +1056,7 @@ class TicTacToeGUI:
             self.pending_ai_id = None
         self.last_move_idx = None
         self.session.reset_board()
+        self.move_annotations = []
         self._apply_selection()
         self._refresh_board()
         self._refresh_move_log()
@@ -1034,6 +1087,9 @@ class TicTacToeGUI:
 
         self.session.board[idx] = "X"
         self.session.moves.append((idx, "X"))
+        self.move_annotations.append("")
+        if self.show_commentary.get():
+            self._auto_commentary("X", idx, pre_board)
         self._refresh_move_log()
         self._refresh_board()
         winner = module.check_winner(self.session.board)
@@ -1051,7 +1107,11 @@ class TicTacToeGUI:
             return
         ai_idx = self.session.ai_move_fn(self.session.board)
         self.session.board[ai_idx] = "O"
+        pre_board = self.session.board[:]
         self.session.moves.append((ai_idx, "O"))
+        self.move_annotations.append("")
+        if self.show_commentary.get():
+            self._auto_commentary("O", ai_idx, pre_board)
         self._refresh_move_log()
         self._refresh_board()
         self._flash_ai_move(ai_idx)
@@ -1165,6 +1225,10 @@ class TicTacToeGUI:
         # If we just removed an AI move, also remove the preceding player move so turn returns to player.
         if last_symbol == "O" and self.session.moves and self.session.moves[-1][1] == "X":
             _pop_and_clear()
+            if self.move_annotations:
+                self.move_annotations.pop()
+        if self.move_annotations:
+            self.move_annotations.pop()
 
         self.last_move_idx = None
         self.session.game_over = False
