@@ -164,8 +164,8 @@ class TicTacToeGUI:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.root.title("Tic-Tac-Toe")
-        self.root.geometry("1100x800")
-        self.root.minsize(900, 760)
+        self.root.geometry("1000x740")
+        self.root.minsize(780, 640)
         self.settings_path = os.environ.get("GUI_SETTINGS_PATH", SETTINGS_FILE)
         self.logger = self._init_logger()
         settings = self._load_settings()
@@ -794,7 +794,7 @@ class TicTacToeGUI:
             btn.grid(row=0, column=i, padx=2)
 
     def _build_board(self, parent: tk.Widget) -> None:
-        board_frame = ttk.Frame(parent, padding=10, style="Panel.TFrame")
+        board_frame = ttk.Frame(parent, padding=6, style="Panel.TFrame")
         board_frame.grid(row=1, column=0, sticky="nsew")
         board_frame.columnconfigure((0, 1, 2), weight=1)
         board_frame.rowconfigure((1, 2, 3), weight=1)
@@ -810,7 +810,7 @@ class TicTacToeGUI:
                     board_frame,
                     text=" ",
                     command=lambda i=idx: self._handle_player_move(i),
-                    width=4,
+                    width=3,
                     font=self._font("board"),
                     bg=self._color("CELL"),
                     fg=self._color("TEXT"),
@@ -826,7 +826,7 @@ class TicTacToeGUI:
                 btn.default_fg = self._color("TEXT")  # type: ignore[attr-defined]
                 btn.bind("<Enter>", lambda _e, b=btn: self._hover_on(b))
                 btn.bind("<Leave>", lambda _e, b=btn: self._hover_off(b))
-                btn.grid(row=r + 1, column=c, padx=6, pady=6, sticky="nsew")
+                btn.grid(row=r + 1, column=c, padx=4, pady=4, sticky="nsew")
                 row_buttons.append(btn)
             self.buttons.append(row_buttons)
 
