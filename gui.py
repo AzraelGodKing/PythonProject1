@@ -316,6 +316,8 @@ class TicTacToeGUI:
 
         canvas = tk.Canvas(outer, highlightthickness=0, bg=self._color("BG"))
         vbar = ttk.Scrollbar(outer, orient="vertical", command=canvas.yview)
+        self._vbar = vbar
+        self._vbar_visible = True
         canvas.configure(yscrollcommand=vbar.set)
         canvas.grid(row=0, column=0, sticky="nsew")
         vbar.grid(row=0, column=1, sticky="ns")
@@ -324,11 +326,26 @@ class TicTacToeGUI:
         scroll_frame = ttk.Frame(canvas, padding=10, style="App.TFrame")
         window_id = canvas.create_window((0, 0), window=scroll_frame, anchor="nw")
 
+        def _update_scrollbar_visibility() -> None:
+            frame_h = scroll_frame.winfo_height()
+            canvas_h = canvas.winfo_height()
+            if frame_h and canvas_h:
+                if frame_h <= canvas_h and self._vbar_visible:
+                    vbar.grid_remove()
+                    canvas.configure(yscrollcommand=None)
+                    self._vbar_visible = False
+                elif frame_h > canvas_h and not self._vbar_visible:
+                    vbar.grid(row=0, column=1, sticky="ns")
+                    canvas.configure(yscrollcommand=vbar.set)
+                    self._vbar_visible = True
+
         def _on_frame_configure(_event=None) -> None:
             canvas.configure(scrollregion=canvas.bbox("all"))
+            _update_scrollbar_visibility()
 
         def _on_canvas_configure(event) -> None:
             canvas.itemconfigure(window_id, width=event.width)
+            _update_scrollbar_visibility()
 
         scroll_frame.bind("<Configure>", _on_frame_configure)
         canvas.bind("<Configure>", _on_canvas_configure)
