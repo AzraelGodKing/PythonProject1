@@ -671,12 +671,11 @@ class TicTacToeGUI:
             canvas.create_rectangle(i * segment, 0, (i + 1) * segment, 20, fill=col, outline=col)
 
     def _build_controls(self, parent: tk.Widget) -> None:
-        top = ttk.Frame(parent, padding=8, style="App.TFrame")
+        top = ttk.Frame(parent, padding=(6, 4), style="App.TFrame")
         top.grid(row=0, column=0, sticky="ew")
-        for col in range(6):
-            top.columnconfigure(col, weight=1)
+        top.columnconfigure(2, weight=1)
 
-        ttk.Label(top, text="Difficulty:", style="App.TLabel", font=self._font("title")).grid(row=0, column=0, sticky="w")
+        ttk.Label(top, text="Difficulty:", style="App.TLabel", font=self._font("title")).grid(row=0, column=0, sticky="w", padx=(0, 4))
         self.diff_var = tk.StringVar(value="Easy")
         diff_menu = ttk.Combobox(
             top,
@@ -686,10 +685,10 @@ class TicTacToeGUI:
             width=10,
             style="App.TCombobox",
         )
-        diff_menu.grid(row=0, column=1, padx=4, sticky="w")
+        diff_menu.grid(row=0, column=1, padx=(0, 6), sticky="w")
         diff_menu.bind("<<ComboboxSelected>>", self._on_diff_change)
 
-        ttk.Label(top, text="Personality:", style="App.TLabel", font=self._font("title")).grid(row=0, column=2, sticky="w")
+        ttk.Label(top, text="Personality:", style="App.TLabel", font=self._font("title")).grid(row=0, column=2, sticky="w", padx=(0, 4))
         self.personality_var = tk.StringVar(value="balanced")
         self.personality_menu = ttk.Combobox(
             top,
@@ -699,18 +698,18 @@ class TicTacToeGUI:
             width=14,
             style="App.TCombobox",
         )
-        self.personality_menu.grid(row=0, column=3, padx=4, sticky="w")
+        self.personality_menu.grid(row=0, column=3, padx=(0, 6), sticky="w")
         self.personality_menu.bind("<<ComboboxSelected>>", self._on_personality_change)
 
-        self.start_btn = ttk.Button(top, text="New Game", command=self.start_new_game, style="Accent.TButton")
-        self.start_btn.grid(row=0, column=4, padx=6, sticky="w")
+        btn_bar = ttk.Frame(top, style="App.TFrame")
+        btn_bar.grid(row=0, column=4, columnspan=2, sticky="e")
+        self.start_btn = ttk.Button(btn_bar, text="New Game", command=self.start_new_game, style="Accent.TButton")
+        self.start_btn.grid(row=0, column=0, padx=(0, 4))
+        self.reset_btn = ttk.Button(btn_bar, text="Reset Scoreboard", command=self._reset_scoreboard, style="Panel.TButton")
+        self.reset_btn.grid(row=0, column=1, padx=(4, 0))
 
-        self.reset_btn = ttk.Button(top, text="Reset Scoreboard", command=self._reset_scoreboard, style="Panel.TButton")
-        self.reset_btn.grid(row=0, column=5, padx=4, sticky="w")
-
-        # Second row: match controls to avoid horizontal overflow on small widths.
         match_row = ttk.Frame(top, style="App.TFrame")
-        match_row.grid(row=1, column=0, columnspan=6, sticky="w", pady=(6, 0))
+        match_row.grid(row=1, column=0, columnspan=6, sticky="ew", pady=(6, 0))
         ttk.Label(match_row, text="Match (best of):", style="App.TLabel", font=self._font("title")).grid(row=0, column=0, sticky="w", padx=(0, 6))
         self.match_entry = ttk.Entry(match_row, textvariable=self.match_length_var, width=6)
         self.match_entry.grid(row=0, column=1, padx=4, sticky="w")
