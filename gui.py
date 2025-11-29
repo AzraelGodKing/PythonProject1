@@ -174,6 +174,7 @@ class TicTacToeGUI:
         self.sound_enabled = tk.BooleanVar(value=settings["sound"])
         self.show_coords = tk.BooleanVar(value=settings["show_coords"])
         self.show_heatmap = tk.BooleanVar(value=settings.get("show_heatmap", False))
+        self.show_commentary = tk.BooleanVar(value=settings.get("show_commentary", False))
         self.palette = self._resolve_palette(self.theme_var.get())
         self.fonts = dict(FONTS_LARGE if self.large_fonts.get() else FONTS_DEFAULT)
         self._configure_style()
@@ -391,6 +392,7 @@ class TicTacToeGUI:
             "sound": True,
             "show_coords": False,
             "show_heatmap": False,
+            "show_commentary": False,
             "compact_sidebar": False,
         }
         data = None
@@ -437,6 +439,7 @@ class TicTacToeGUI:
             "sound": bool(data.get("sound", defaults["sound"])),
             "show_coords": bool(data.get("show_coords", defaults["show_coords"])),
             "show_heatmap": bool(data.get("show_heatmap", False)),
+            "show_commentary": bool(data.get("show_commentary", defaults["show_commentary"])),
             "compact_sidebar": bool(data.get("compact_sidebar", defaults["compact_sidebar"])),
         }
 
@@ -451,6 +454,7 @@ class TicTacToeGUI:
             "sound": self.sound_enabled.get(),
             "show_coords": self.show_coords.get(),
             "show_heatmap": self.show_heatmap.get(),
+            "show_commentary": self.show_commentary.get(),
             "compact_sidebar": self.compact_sidebar.get(),
         }
         try:
