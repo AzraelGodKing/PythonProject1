@@ -1090,13 +1090,14 @@ class TicTacToeGUI:
             else:
                 self.status_var.set(f"Match over! {self.match_winner} wins the match.")
             self._set_status_icon("done")
-            # persist match result per difficulty
-            diff_key = self.session.difficulty_key
-            if diff_key not in self.match_scoreboard:
-                self.match_scoreboard[diff_key] = module.DEFAULT_SCORE.copy()
-            self.match_scoreboard[diff_key][self.match_winner] += 1
-            module.save_match_scoreboard(self.match_scoreboard)
-            self._refresh_scoreboard()
+            # persist match result per difficulty (skip Bo1)
+            if self.match_target > 1:
+                diff_key = self.session.difficulty_key
+                if diff_key not in self.match_scoreboard:
+                    self.match_scoreboard[diff_key] = module.DEFAULT_SCORE.copy()
+                self.match_scoreboard[diff_key][self.match_winner] += 1
+                module.save_match_scoreboard(self.match_scoreboard)
+                self._refresh_scoreboard()
 
         self.match_var.set(self._match_score_text())
         self._refresh_quick_stats()

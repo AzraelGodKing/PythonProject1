@@ -895,12 +895,13 @@ def play_session(scoreboard: Dict[str, Dict[str, int]]) -> Dict[str, Dict[str, i
                     print("Match over! It ended in a draw.")
             else:
                 print(f"Match over! Winner: {match_winner}")
-            # record match outcome per difficulty
-            if diff_key not in match_scoreboard:
-                match_scoreboard[diff_key] = DEFAULT_SCORE.copy()
-            match_scoreboard[diff_key][match_winner] += 1
-            save_match_scoreboard(match_scoreboard)
-            print_match_scoreboard(match_scoreboard)
+            # record match outcome per difficulty (skip single-round Bo1)
+            if match_target > 1:
+                if diff_key not in match_scoreboard:
+                    match_scoreboard[diff_key] = DEFAULT_SCORE.copy()
+                match_scoreboard[diff_key][match_winner] += 1
+                save_match_scoreboard(match_scoreboard)
+                print_match_scoreboard(match_scoreboard)
             another_match = input("Start another match? (y/n): ").strip().lower()
             if another_match in {"y", "yes"}:
                 match_length = choose_match_length()
