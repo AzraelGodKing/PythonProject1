@@ -1076,6 +1076,7 @@ class TicTacToeGUI:
 
         r, c = divmod(idx, 3)
         self.heatmap_locked = False
+        pre_board = self.session.board[:]
         if self.confirm_moves.get():
             if not messagebox.askyesno("Confirm move", f"Place X at row {r + 1}, column {c + 1}?"):
                 return
