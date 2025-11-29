@@ -869,6 +869,7 @@ def play_session(
     personality_override: Optional[str] = None,
     match_length_override: Optional[int] = None,
     non_interactive: bool = False,
+    summary: Optional[Dict[str, object]] = None,
 ) -> Dict[str, Dict[str, int]]:
     _MINIMAX_CACHE.clear()
     session_history: List[HistoryEntry] = load_session_history_from_file()
@@ -882,6 +883,8 @@ def play_session(
     match_target = (match_length // 2) + 1
     match_wins = {"X": 0, "O": 0, "Draw": 0}
     match_rounds = 0
+    match_winner: Optional[str] = None
+    last_result: Optional[str] = None
 
     while True:
         print_history(session_history)
@@ -899,6 +902,7 @@ def play_session(
             continue
 
         winner, duration = result
+        last_result = winner
 
         if diff_key not in scoreboard:
             scoreboard[diff_key] = DEFAULT_SCORE.copy()
@@ -962,6 +966,8 @@ def play_session(
                 continue
             break
         else:
+            if non_interactive:
+                break
             cont = input("Continue the current match? (y to continue, n to end): ").strip().lower()
             if cont not in {"y", "yes"}:
                 break
@@ -974,6 +980,22 @@ def play_session(
 
     save_session_history_to_file(session_history, rotate=True)
 
+    if summary is not None:
+        summary.clear()
+        summary.update(
+            {
+                "difficulty": diff_key,
+                "personality": personality,
+                "match_length": match_length,
+                "match_target": match_target,
+                "match_rounds": match_rounds,
+                "match_winner": match_winner,
+                "last_result": last_result,
+                "match_wins": dict(match_wins),
+                "history_entries": len(session_history),
+                "scoreboard": {k: dict(v) for k, v in scoreboard.items()},
+            }
+        )
     return scoreboard
 
 
@@ -1041,6 +1063,13 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         action="store_true",
         help="Skip follow-up prompts (e.g., new match) after the first match completes.",
     )
+    parser.add_argument(
+        "--output",
+        choices=("text", "json"),
+        default="text",
+        help="Choose text (default) or json summary output when auto-starting.",
+    )
+    parser.add_argument("--result-file", help="Optional path to write the summary JSON.")
     return parser.parse_args(argv)
 
 
@@ -1054,13 +1083,24 @@ def main(argv: Optional[List[str]] = None) -> None:
     scoreboard_obj = load_scoreboard()
     auto_start = args.start or args.difficulty or args.personality or args.best_of
     if auto_start:
+        summary: Dict[str, object] = {}
         play_session(
             scoreboard_obj,
             diff_key_override=args.difficulty,
             personality_override=args.personality,
             match_length_override=args.best_of,
             non_interactive=args.non_interactive,
+            summary=summary,
         )
+        if args.output == "json":
+            payload = json.dumps(summary, indent=2)
+            print(payload)
+            if args.result_file:
+                try:
+                    with open(args.result_file, "w", encoding="utf-8") as f:
+                        f.write(payload)
+                except OSError as exc:
+                    print(f"Could not write result file: {exc}")
     else:
         play_game()
 

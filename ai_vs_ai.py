@@ -138,7 +138,7 @@ def _run_headless_ai_vs_ai(
     delay_sec: float = 0.0,
     scoreboard_file: str = AI_SCOREBOARD_FILE,
     safe_mode: bool = False,
-) -> Dict[str, int]:
+) -> Dict[str, object]:
     if ai_x_name not in AI_PLAYERS or ai_o_name not in AI_PLAYERS:
         raise ValueError("Unknown AI selection")
     rounds = max(1, rounds)
@@ -170,7 +170,12 @@ def _run_headless_ai_vs_ai(
                 pass
     if not safe_mode:
         save_ai_scoreboard(scores, file_path=scoreboard_file)
-    return scores
+    return {
+        "ai_x": ai_x_name,
+        "ai_o": ai_o_name,
+        "rounds": rounds,
+        "scores": scores,
+    }
 
 
 def play_ai_vs_ai_session() -> None:
@@ -235,6 +240,13 @@ def parse_args(argv=None) -> argparse.Namespace:
         action="store_true",
         help="Skip persistence for AI-vs-AI scores (headless mode only).",
     )
+    parser.add_argument(
+        "--output",
+        choices=("text", "json"),
+        default="text",
+        help="Choose text (default) or json summary output in headless mode.",
+    )
+    parser.add_argument("--result-file", help="Optional path to write the summary JSON.")
     return parser.parse_args(argv)
 
 
@@ -242,7 +254,7 @@ def main(argv=None) -> None:
     args = parse_args(argv)
     if args.ai_x and args.ai_o:
         scoreboard_file = args.scoreboard_file or AI_SCOREBOARD_FILE
-        scores = _run_headless_ai_vs_ai(
+        summary = _run_headless_ai_vs_ai(
             args.ai_x,
             args.ai_o,
             rounds=args.rounds,
@@ -250,9 +262,19 @@ def main(argv=None) -> None:
             scoreboard_file=scoreboard_file,
             safe_mode=args.safe_mode,
         )
-        print("\nFinal scores:")
-        for name, val in sorted(scores.items()):
-            print(f"- {name}: {val}")
+        if args.output == "json":
+            payload = json.dumps(summary, indent=2)
+            print(payload)
+            if args.result_file:
+                try:
+                    with open(args.result_file, "w", encoding="utf-8") as f:
+                        f.write(payload)
+                except OSError as exc:
+                    print(f"Could not write result file: {exc}")
+        else:
+            print("\nFinal scores:")
+            for name, val in sorted(summary["scores"].items()):  # type: ignore[index]
+                print(f"- {name}: {val}")
     else:
         play_ai_vs_ai_session()
 
