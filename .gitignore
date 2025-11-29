@@ -1,5 +1,7 @@
 # Ignore everything by default
 *
+
+# Allow listed files/directories
 !.gitignore
 !gui.py
 !tic-tac-toe.py
@@ -7,13 +9,19 @@
 !scoreboard.py
 !ai_vs_ai.py
 !README.md
+!pyproject.toml
+
 !tictactoe/
 !tictactoe/**
 tictactoe/__pycache__/
+
 !tests/
 !tests/**
 tests/__pycache__/
+
 !data/
 !data/logs/
 !data/logs/.gitkeep
-!pyproject.toml
+
+!/.github
+!/.github/**
