@@ -388,8 +388,8 @@ class TicTacToeGUI:
             "animations": True,
             "sound": True,
             "show_coords": False,
-            "show_heatmap": False,
-            "show_commentary": False,
+            "show_heatmap": bool(settings.get("show_heatmap", False)),
+            "show_commentary": bool(settings.get("show_commentary", False)),
             "compact_sidebar": False,
         }
         data = None
