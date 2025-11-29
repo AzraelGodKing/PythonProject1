@@ -1,5 +1,6 @@
 """Terminal tic-tac-toe: you (X) vs. a simple AI (O) using row, column coordinates with a persistent scoreboard."""
 
+import argparse
 import json
 import os
 import random
@@ -31,6 +32,22 @@ maybe_reset_scoreboard = scoreboard.maybe_reset_scoreboard
 load_match_scoreboard = scoreboard.load_match_scoreboard
 save_match_scoreboard = scoreboard.save_match_scoreboard
 print_match_scoreboard = scoreboard.print_match_scoreboard
+
+
+def configure_history_file(path: Optional[str]) -> None:
+    """Allow CLI/tests to override where history logs are written/read."""
+    global HISTORY_FILE, HISTORY_DIR
+    if not path:
+        return
+    HISTORY_FILE = path
+    HISTORY_DIR = os.path.dirname(path) or "."
+
+
+def set_safe_mode(enabled: bool) -> None:
+    """Expose runtime safe-mode toggling for CLI flags/tests."""
+    scoreboard.set_safe_mode(enabled)
+    global SAFE_MODE
+    SAFE_MODE = scoreboard.SAFE_MODE
 
 
 def print_board(board: List[str]) -> None:
@@ -211,7 +228,8 @@ def print_achievements(stats: SessionStats, history: List[HistoryEntry]) -> None
         print(f"- {item}")
 
 
-def save_session_history_to_file(history: List[HistoryEntry], file_path: str = HISTORY_FILE, rotate: bool = False) -> str:
+def save_session_history_to_file(history: List[HistoryEntry], file_path: Optional[str] = None, rotate: bool = False) -> str:
+    file_path = file_path or HISTORY_FILE
     if SAFE_MODE:
         print(SAFE_MODE_MESSAGE)
         return file_path
@@ -234,7 +252,8 @@ def save_session_history_to_file(history: List[HistoryEntry], file_path: str = H
     return file_path
 
 
-def load_session_history_from_file(file_path: str = HISTORY_FILE, limit: int = 100) -> List[HistoryEntry]:
+def load_session_history_from_file(file_path: Optional[str] = None, limit: int = 100) -> List[HistoryEntry]:
+    file_path = file_path or HISTORY_FILE
     if SAFE_MODE:
         return []
     entries: List[HistoryEntry] = []
@@ -268,7 +287,8 @@ def load_session_history_from_file(file_path: str = HISTORY_FILE, limit: int = 1
     return entries
 
 
-def maybe_clear_history_file(file_path: str = HISTORY_FILE) -> None:
+def maybe_clear_history_file(file_path: Optional[str] = None) -> None:
+    file_path = file_path or HISTORY_FILE
     if not os.path.exists(file_path):
         return
     choice = input("Clear saved session history file before starting? (y/n): ").strip().lower()
@@ -280,7 +300,8 @@ def maybe_clear_history_file(file_path: str = HISTORY_FILE) -> None:
             print(f"Could not clear session history file ({exc}).")
 
 
-def view_saved_history(file_path: str = HISTORY_FILE) -> None:
+def view_saved_history(file_path: Optional[str] = None) -> None:
+    file_path = file_path or HISTORY_FILE
     if not os.path.exists(file_path):
         print("No saved session history file found.")
         return
@@ -700,7 +721,9 @@ def best_player_hint(board: List[str]) -> Optional[int]:
     return best_idx
 
 
-def choose_normal_personality() -> Tuple[str, Callable[[List[str]], int]]:
+def choose_normal_personality(preferred: Optional[str] = None) -> Tuple[str, Callable[[List[str]], int]]:
+    if preferred and preferred in NORMAL_PERSONALITIES:
+        return preferred, NORMAL_PERSONALITIES[preferred]
     options = {
         "1": "balanced",
         "balanced": "balanced",
@@ -723,7 +746,9 @@ def choose_normal_personality() -> Tuple[str, Callable[[List[str]], int]]:
         print("Please enter 1-5 or a personality name (balanced/defensive/aggressive/misdirection/mirror).")
 
 
-def choose_match_length() -> int:
+def choose_match_length(preferred: Optional[int] = None) -> int:
+    if isinstance(preferred, int) and preferred >= 1 and preferred % 2 == 1:
+        return preferred
     while True:
         text = input(f"Choose match length (odd number, best-of). Press Enter for default {DEFAULT_MATCH_LENGTH}: ").strip()
         if not text:
@@ -739,7 +764,7 @@ def print_match_score(match_wins: Dict[str, int], target: int) -> None:
     print(f"Match score (target {target} wins): X={match_wins['X']}  O={match_wins['O']}  Draws={match_wins['Draw']}")
 
 
-def choose_difficulty() -> Tuple[str, Callable[[List[str]], int], str]:
+def choose_difficulty(preferred: Optional[str] = None, personality: Optional[str] = None) -> Tuple[str, Callable[[List[str]], int], str]:
     options = {
         "1": "Easy",
         "easy": "Easy",
@@ -748,6 +773,17 @@ def choose_difficulty() -> Tuple[str, Callable[[List[str]], int], str]:
         "3": "Hard",
         "hard": "Hard",
     }
+    if preferred:
+        normalized = preferred if preferred in {"Easy", "Normal", "Hard"} else options.get(preferred.lower())
+        if normalized == "Easy":
+            return normalized, ai_move_easy, "standard"
+        if normalized == "Normal":
+            personality = personality or "balanced"
+            if personality not in NORMAL_PERSONALITIES:
+                personality = "balanced"
+            return normalized, NORMAL_PERSONALITIES[personality], personality
+        if normalized == "Hard":
+            return normalized, ai_move_hard, "standard"
     while True:
         choice = input("Choose AI difficulty - 1: Easy, 2: Normal, 3: Hard: ").strip().lower()
         if choice in options:
@@ -827,16 +863,22 @@ def play_round(ai_move_fn: Callable[[List[str]], int], difficulty_label: str) ->
             return "Draw", duration
 
 
-def play_session(scoreboard: Dict[str, Dict[str, int]]) -> Dict[str, Dict[str, int]]:
+def play_session(
+    scoreboard: Dict[str, Dict[str, int]],
+    diff_key_override: Optional[str] = None,
+    personality_override: Optional[str] = None,
+    match_length_override: Optional[int] = None,
+    non_interactive: bool = False,
+) -> Dict[str, Dict[str, int]]:
     _MINIMAX_CACHE.clear()
     session_history: List[HistoryEntry] = load_session_history_from_file()
     stats = _new_stats()
     match_scoreboard = load_match_scoreboard()
 
-    diff_key, ai_move_fn, personality = choose_difficulty()
+    diff_key, ai_move_fn, personality = choose_difficulty(diff_key_override, personality_override)
     difficulty_label = difficulty_display_label(diff_key, personality)
     print(f"Starting game on {difficulty_label}.")
-    match_length = choose_match_length()
+    match_length = choose_match_length(match_length_override)
     match_target = (match_length // 2) + 1
     match_wins = {"X": 0, "O": 0, "Draw": 0}
     match_rounds = 0
@@ -849,6 +891,8 @@ def play_session(scoreboard: Dict[str, Dict[str, int]]) -> Dict[str, Dict[str, i
 
         result = play_round(ai_move_fn, difficulty_label)
         if result is None:
+            if non_interactive:
+                break
             quit_game = input("Quit the game entirely? (y/n): ").strip().lower()
             if quit_game in {"y", "yes"}:
                 break
@@ -902,6 +946,8 @@ def play_session(scoreboard: Dict[str, Dict[str, int]]) -> Dict[str, Dict[str, i
                 match_scoreboard[diff_key][match_winner] += 1
                 save_match_scoreboard(match_scoreboard)
                 print_match_scoreboard(match_scoreboard)
+            if non_interactive:
+                break
             another_match = input("Start another match? (y/n): ").strip().lower()
             if another_match in {"y", "yes"}:
                 match_length = choose_match_length()
@@ -971,5 +1017,53 @@ def play_game() -> None:
     input("\nGame over. Press Enter to close the game.")
 
 
+def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Tic-Tac-Toe CLI with optional automation-friendly flags.")
+    parser.add_argument("--difficulty", choices=DIFFICULTIES, help="AI difficulty to start with.")
+    parser.add_argument(
+        "--personality",
+        choices=tuple(NORMAL_PERSONALITIES.keys()),
+        help="Normal-mode AI personality (only used when difficulty=Normal).",
+    )
+    parser.add_argument("--best-of", type=int, help="Match length (odd number) to start with.")
+    parser.add_argument("--history-file", help="Path to session history log.")
+    safe = parser.add_mutually_exclusive_group()
+    safe.add_argument("--safe-mode", dest="safe_mode", action="store_true", help="Disable persistence during this run.")
+    safe.add_argument("--persist", dest="safe_mode", action="store_false", help="Force persistence during this run.")
+    parser.set_defaults(safe_mode=None)
+    parser.add_argument(
+        "--start",
+        action="store_true",
+        help="Skip the main menu and start a match immediately (uses provided flags if set).",
+    )
+    parser.add_argument(
+        "--non-interactive",
+        action="store_true",
+        help="Skip follow-up prompts (e.g., new match) after the first match completes.",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: Optional[List[str]] = None) -> None:
+    args = parse_args(argv)
+    if args.safe_mode is not None:
+        set_safe_mode(args.safe_mode)
+    if args.history_file:
+        configure_history_file(args.history_file)
+
+    scoreboard_obj = load_scoreboard()
+    auto_start = args.start or args.difficulty or args.personality or args.best_of
+    if auto_start:
+        play_session(
+            scoreboard_obj,
+            diff_key_override=args.difficulty,
+            personality_override=args.personality,
+            match_length_override=args.best_of,
+            non_interactive=args.non_interactive,
+        )
+    else:
+        play_game()
+
+
 if __name__ == "__main__":
-    play_game()
+    main()

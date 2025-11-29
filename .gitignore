@@ -9,6 +9,7 @@
 !README.md
 !tictactoe/
 !tictactoe/**
+tictactoe/__pycache__/
 !data/
 !data/logs/
 !data/logs/.gitkeep

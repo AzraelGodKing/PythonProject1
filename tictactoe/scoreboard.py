@@ -39,6 +39,12 @@ def print_match_scoreboard(scoreboard: Dict[str, Dict[str, int]]) -> None:
         print(f"{diff}: X match wins={entry['X']}  O match wins={entry['O']}  Match draws={entry['Draw']}")
 
 
+def set_safe_mode(enabled: bool) -> None:
+    """Allow callers (e.g., CLI flags/tests) to toggle persistence at runtime."""
+    global SAFE_MODE
+    SAFE_MODE = bool(enabled)
+
+
 def _compute_score_hash(scoreboard: Dict[str, Dict[str, int]]) -> str:
     payload = json.dumps(scoreboard, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()

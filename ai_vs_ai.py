@@ -3,6 +3,7 @@ AI vs AI mode with its own scoreboard.
 Select two AI variants and let them play automatic rounds while tracking wins/draws separately from the player scoreboard.
 """
 
+import argparse
 import json
 import os
 from typing import Callable, Dict, List, Tuple
@@ -36,6 +37,7 @@ def _coerce_int(val, default: int = 0) -> int:
 
 def load_ai_scoreboard(file_path: str = AI_SCOREBOARD_FILE) -> Dict[str, int]:
     _ensure_dir(file_path)
+    backup_path = AI_SCOREBOARD_BACKUP if file_path == AI_SCOREBOARD_FILE else f"{file_path}.bak"
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -46,7 +48,7 @@ def load_ai_scoreboard(file_path: str = AI_SCOREBOARD_FILE) -> Dict[str, int]:
     except json.JSONDecodeError:
         # attempt backup
         try:
-            with open(AI_SCOREBOARD_BACKUP, "r", encoding="utf-8") as f:
+            with open(backup_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             if isinstance(data, dict):
                 print("AI-vs-AI scoreboard restored from backup.")
@@ -60,12 +62,13 @@ def load_ai_scoreboard(file_path: str = AI_SCOREBOARD_FILE) -> Dict[str, int]:
 
 def save_ai_scoreboard(scores: Dict[str, int], file_path: str = AI_SCOREBOARD_FILE) -> None:
     _ensure_dir(file_path)
+    backup_path = AI_SCOREBOARD_BACKUP if file_path == AI_SCOREBOARD_FILE else f"{file_path}.bak"
     # backup current file
     try:
         if os.path.exists(file_path):
             with open(file_path, "r", encoding="utf-8") as f:
                 current = f.read()
-            with open(AI_SCOREBOARD_BACKUP, "w", encoding="utf-8") as f:
+            with open(backup_path, "w", encoding="utf-8") as f:
                 f.write(current)
     except Exception:
         pass
@@ -128,6 +131,48 @@ def _play_ai_round(ai_x: Callable[[List[str]], int], ai_o: Callable[[List[str]],
         current = "O" if current == "X" else "X"
 
 
+def _run_headless_ai_vs_ai(
+    ai_x_name: str,
+    ai_o_name: str,
+    rounds: int,
+    delay_sec: float = 0.0,
+    scoreboard_file: str = AI_SCOREBOARD_FILE,
+    safe_mode: bool = False,
+) -> Dict[str, int]:
+    if ai_x_name not in AI_PLAYERS or ai_o_name not in AI_PLAYERS:
+        raise ValueError("Unknown AI selection")
+    rounds = max(1, rounds)
+    scores = {} if safe_mode else load_ai_scoreboard(scoreboard_file)
+    scores.setdefault(ai_x_name, 0)
+    scores.setdefault(ai_o_name, 0)
+    scores.setdefault("Draw", 0)
+    ai_x_fn = AI_PLAYERS[ai_x_name]
+    ai_o_fn = AI_PLAYERS[ai_o_name]
+
+    for i in range(1, rounds + 1):
+        winner = _play_ai_round(ai_x_fn, ai_o_fn)
+        if winner == "X":
+            scores[ai_x_name] += 1
+            result = f"Round {i}: X ({ai_x_name}) wins."
+        elif winner == "O":
+            scores[ai_o_name] += 1
+            result = f"Round {i}: O ({ai_o_name}) wins."
+        else:
+            scores["Draw"] = scores.get("Draw", 0) + 1
+            result = f"Round {i}: Draw."
+        print(result)
+        if delay_sec > 0:
+            try:
+                import time
+
+                time.sleep(delay_sec)
+            except Exception:
+                pass
+    if not safe_mode:
+        save_ai_scoreboard(scores, file_path=scoreboard_file)
+    return scores
+
+
 def play_ai_vs_ai_session() -> None:
     scores = load_ai_scoreboard()
     print("Current AI-vs-AI scoreboard:")
@@ -177,5 +222,40 @@ def play_ai_vs_ai_session() -> None:
         print(f"- {name}: {val}")
 
 
+def parse_args(argv=None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run AI-vs-AI matches (headless or interactive).")
+    ai_names = list(AI_PLAYERS.keys())
+    parser.add_argument("--ai-x", choices=ai_names, help="AI to play as X.")
+    parser.add_argument("--ai-o", choices=ai_names, help="AI to play as O.")
+    parser.add_argument("--rounds", type=int, default=5, help="How many rounds to play (default 5).")
+    parser.add_argument("--delay", type=float, default=0.0, help="Optional delay (seconds) between rounds.")
+    parser.add_argument("--scoreboard-file", help="Custom scoreboard path for AI vs AI results.")
+    parser.add_argument(
+        "--safe-mode",
+        action="store_true",
+        help="Skip persistence for AI-vs-AI scores (headless mode only).",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv=None) -> None:
+    args = parse_args(argv)
+    if args.ai_x and args.ai_o:
+        scoreboard_file = args.scoreboard_file or AI_SCOREBOARD_FILE
+        scores = _run_headless_ai_vs_ai(
+            args.ai_x,
+            args.ai_o,
+            rounds=args.rounds,
+            delay_sec=max(0.0, args.delay),
+            scoreboard_file=scoreboard_file,
+            safe_mode=args.safe_mode,
+        )
+        print("\nFinal scores:")
+        for name, val in sorted(scores.items()):
+            print(f"- {name}: {val}")
+    else:
+        play_ai_vs_ai_session()
+
+
 if __name__ == "__main__":
-    play_ai_vs_ai_session()
+    main()
