@@ -836,7 +836,7 @@ class TicTacToeGUI:
         ttk.Label(log_frame, text="Moves", style="Title.TLabel").grid(row=0, column=0, sticky="w")
         self.move_listbox = tk.Listbox(
             log_frame,
-            height=3,
+            height=2,
             bg=self._color("PANEL"),
             fg=self._color("TEXT"),
             highlightthickness=1,
@@ -845,9 +845,12 @@ class TicTacToeGUI:
             activestyle="none",
             relief="flat",
         )
+        log_scroll = ttk.Scrollbar(log_frame, orient="vertical", command=self.move_listbox.yview)
+        self.move_listbox.configure(yscrollcommand=log_scroll.set)
         self.move_listbox.grid(row=1, column=0, sticky="nsew", pady=(4, 0))
+        log_scroll.grid(row=1, column=1, sticky="ns", pady=(4, 0))
         annotate_btn = ttk.Button(log_frame, text="Annotate last move", style="Panel.TButton", command=self._annotate_last_move)
-        annotate_btn.grid(row=2, column=0, sticky="ew", pady=(6, 0))
+        annotate_btn.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(6, 0))
         log_frame.columnconfigure(0, weight=1)
 
         ttk.Label(log_frame, text="Quick stats", style="App.TLabel", font=self._font("title")).grid(row=2, column=0, sticky="w", pady=(8, 2))
