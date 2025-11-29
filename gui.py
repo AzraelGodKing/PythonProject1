@@ -811,7 +811,7 @@ class TicTacToeGUI:
             btn.grid(row=0, column=i, padx=2)
 
     def _build_board(self, parent: tk.Widget) -> None:
-        board_frame = ttk.Frame(parent, padding=6, style="Panel.TFrame")
+        board_frame = ttk.Frame(parent, padding=4, style="Panel.TFrame")
         board_frame.grid(row=1, column=0, sticky="nsew")
         board_frame.columnconfigure((0, 1, 2), weight=1)
         board_frame.rowconfigure((1, 2, 3), weight=1)
@@ -843,7 +843,7 @@ class TicTacToeGUI:
                 btn.default_fg = self._color("TEXT")  # type: ignore[attr-defined]
                 btn.bind("<Enter>", lambda _e, b=btn: self._hover_on(b))
                 btn.bind("<Leave>", lambda _e, b=btn: self._hover_off(b))
-                btn.grid(row=r + 1, column=c, padx=4, pady=4, sticky="nsew")
+                btn.grid(row=r + 1, column=c, padx=3, pady=3, sticky="nsew")
                 row_buttons.append(btn)
             self.buttons.append(row_buttons)
 
@@ -853,7 +853,7 @@ class TicTacToeGUI:
         ttk.Label(log_frame, text="Moves", style="Title.TLabel").grid(row=0, column=0, sticky="w")
         self.move_listbox = tk.Listbox(
             log_frame,
-            height=2,
+            height=1,
             bg=self._color("PANEL"),
             fg=self._color("TEXT"),
             highlightthickness=1,
