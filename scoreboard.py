@@ -8,6 +8,8 @@ DATA_DIR = "data"
 SCOREBOARD_DIR = os.path.join(DATA_DIR, "scoreboard")
 SCOREBOARD_FILE = os.path.join(SCOREBOARD_DIR, "scoreboard.json")
 SCOREBOARD_BACKUP = os.path.join(SCOREBOARD_DIR, "scoreboard.json.bak")
+MATCH_SCOREBOARD_FILE = os.path.join(SCOREBOARD_DIR, "match_scoreboard.json")
+MATCH_SCOREBOARD_BACKUP = MATCH_SCOREBOARD_FILE + ".bak"
 
 SAFE_MODE = os.getenv("TICTACTOE_SAFE_MODE", "0") not in {"0", "false", "False", "", None}
 SAFE_MODE_MESSAGE = "Safe mode enabled; skipping persistence."
@@ -28,6 +30,13 @@ def print_scoreboard(scoreboard: Dict[str, Dict[str, int]]) -> None:
     for diff in DIFFICULTIES:
         entry = scoreboard.get(diff, DEFAULT_SCORE)
         print(f"{diff}: You (X): {entry['X']}  |  AI (O): {entry['O']}  |  Draws: {entry['Draw']}")
+
+
+def print_match_scoreboard(scoreboard: Dict[str, Dict[str, int]]) -> None:
+    print("\nMatch Scoreboard (per difficulty):")
+    for diff in DIFFICULTIES:
+        entry = scoreboard.get(diff, DEFAULT_SCORE)
+        print(f"{diff}: X match wins={entry['X']}  O match wins={entry['O']}  Match draws={entry['Draw']}")
 
 
 def _compute_score_hash(scoreboard: Dict[str, Dict[str, int]]) -> str:
@@ -68,18 +77,18 @@ def _extract_scored_payload(payload: Dict[str, object]) -> Dict[str, Dict[str, i
     return None
 
 
-def load_scoreboard(file_path: str = SCOREBOARD_FILE) -> Dict[str, Dict[str, int]]:
+def load_scoreboard(file_path: str = SCOREBOARD_FILE, backup_path: str = SCOREBOARD_BACKUP) -> Dict[str, Dict[str, int]]:
     default_scoreboard = new_scoreboard()
     if SAFE_MODE:
         return default_scoreboard
 
     data = None
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+            with open(file_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         try:
-            with open(SCOREBOARD_BACKUP, "r", encoding="utf-8") as f:
+            with open(backup_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             print("Scoreboard restored from backup.")
         except (OSError, json.JSONDecodeError):
@@ -108,7 +117,7 @@ def load_scoreboard(file_path: str = SCOREBOARD_FILE) -> Dict[str, Dict[str, int
     return default_scoreboard
 
 
-def save_scoreboard(score: Dict[str, Dict[str, int]], file_path: str = SCOREBOARD_FILE) -> None:
+def save_scoreboard(score: Dict[str, Dict[str, int]], file_path: str = SCOREBOARD_FILE, backup_path: str = SCOREBOARD_BACKUP) -> None:
     if SAFE_MODE:
         print(SAFE_MODE_MESSAGE)
         return
@@ -132,7 +141,6 @@ def save_scoreboard(score: Dict[str, Dict[str, int]], file_path: str = SCOREBOAR
         SCORE_PREV_KEY: previous_payload,
     }
     dir_name = os.path.dirname(file_path) or "."
-    backup_path = SCOREBOARD_BACKUP
     os.makedirs(dir_name, exist_ok=True)
     try:
         if os.path.exists(file_path):
@@ -157,6 +165,16 @@ def save_scoreboard(score: Dict[str, Dict[str, int]], file_path: str = SCOREBOAR
                 os.remove(temp_path)
             except OSError:
                 pass
+
+
+def load_match_scoreboard(file_path: str = MATCH_SCOREBOARD_FILE) -> Dict[str, Dict[str, int]]:
+    """Load the match-level scoreboard (per difficulty) from disk."""
+    return load_scoreboard(file_path=file_path, backup_path=MATCH_SCOREBOARD_BACKUP)
+
+
+def save_match_scoreboard(score: Dict[str, Dict[str, int]], file_path: str = MATCH_SCOREBOARD_FILE) -> None:
+    """Persist the match-level scoreboard (per difficulty) to disk."""
+    save_scoreboard(score, file_path=file_path, backup_path=MATCH_SCOREBOARD_BACKUP)
 
 
 def maybe_reset_scoreboard(scoreboard: Dict[str, Dict[str, int]]) -> Dict[str, Dict[str, int]]:

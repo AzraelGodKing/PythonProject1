@@ -178,6 +178,7 @@ class TicTacToeGUI:
         self.fonts = dict(FONTS_LARGE if self.large_fonts.get() else FONTS_DEFAULT)
         self._configure_style()
         self.session = GameSession()
+        self.match_scoreboard = module.load_match_scoreboard()
         self.match_length = 1
         self.match_length_var = tk.StringVar(value="1")
         self.match_target = 1
@@ -197,6 +198,7 @@ class TicTacToeGUI:
 
         self.status_var = tk.StringVar(value="Choose a difficulty and start a game.")
         self.score_var = tk.StringVar()
+        self.match_score_var = tk.StringVar()
         self.history_var = tk.StringVar(value="Recent: none")
         self.log_path_var = tk.StringVar(value=f"History file: {self.session.last_history_path}")
         self.match_var = tk.StringVar(value=self._match_score_text())
@@ -794,22 +796,26 @@ class TicTacToeGUI:
         self.score_label = ttk.Label(info, textvariable=self.score_var, style="App.TLabel", font=self._font("text"), wraplength=260, justify="left")
         self.score_label.grid(row=3, column=0, sticky="w", pady=(2, 6))
 
-        ttk.Label(info, text="Match Score", style="Title.TLabel").grid(row=4, column=0, sticky="w")
+        ttk.Label(info, text="Match Scoreboard", style="Title.TLabel").grid(row=4, column=0, sticky="w")
+        self.match_score_label = ttk.Label(info, textvariable=self.match_score_var, style="App.TLabel", font=self._font("text"), wraplength=260, justify="left")
+        self.match_score_label.grid(row=5, column=0, sticky="w", pady=(2, 6))
+
+        ttk.Label(info, text="Match Score", style="Title.TLabel").grid(row=6, column=0, sticky="w")
         self.match_label = ttk.Label(info, textvariable=self.match_var, style="App.TLabel", font=self._font("text"), wraplength=260, justify="left")
-        self.match_label.grid(row=5, column=0, sticky="w", pady=(2, 6))
+        self.match_label.grid(row=7, column=0, sticky="w", pady=(2, 6))
 
-        ttk.Label(info, text="Quick Stats", style="Title.TLabel").grid(row=6, column=0, sticky="w")
+        ttk.Label(info, text="Quick Stats", style="Title.TLabel").grid(row=8, column=0, sticky="w")
         self.quick_stats_label = ttk.Label(info, textvariable=self.quick_stats_var, style="App.TLabel", font=self._font("text"), wraplength=260, justify="left")
-        self.quick_stats_label.grid(row=7, column=0, sticky="w", pady=(2, 6))
+        self.quick_stats_label.grid(row=9, column=0, sticky="w", pady=(2, 6))
 
-        ttk.Label(info, text="Recent Results", style="Title.TLabel").grid(row=6, column=0, sticky="w")
+        ttk.Label(info, text="Recent Results", style="Title.TLabel").grid(row=10, column=0, sticky="w")
         self.history_label = ttk.Label(info, textvariable=self.history_var, style="App.TLabel", font=self._font("text"), wraplength=260, justify="left")
-        self.history_label.grid(row=8, column=0, sticky="w", pady=(2, 6))
+        self.history_label.grid(row=11, column=0, sticky="w", pady=(2, 6))
 
         self.log_label = ttk.Label(info, textvariable=self.log_path_var, style="Muted.TLabel", font=self._font("text"), wraplength=260, justify="left")
-        self.log_label.grid(row=9, column=0, sticky="w", pady=(4, 8))
+        self.log_label.grid(row=12, column=0, sticky="w", pady=(4, 8))
 
-        ttk.Label(info, text="Shortcuts", style="Title.TLabel").grid(row=10, column=0, sticky="w")
+        ttk.Label(info, text="Shortcuts", style="Title.TLabel").grid(row=13, column=0, sticky="w")
         ttk.Label(
             info,
             text="Moves: 1-9  |  New: N/Ctrl+N",
@@ -817,16 +823,16 @@ class TicTacToeGUI:
             font=self._font("text"),
             wraplength=260,
             justify="left",
-        ).grid(row=11, column=0, sticky="w", pady=(2, 8))
+        ).grid(row=14, column=0, sticky="w", pady=(2, 8))
 
         btn_row = ttk.Frame(info, style="Panel.TFrame")
-        btn_row.grid(row=12, column=0, sticky="ew", pady=(4, 0))
+        btn_row.grid(row=15, column=0, sticky="ew", pady=(4, 0))
         btn_row.columnconfigure((0, 1), weight=1)
         ttk.Button(btn_row, text="Hint", style="Panel.TButton", command=self._show_hint).grid(row=0, column=0, sticky="ew", padx=3)
         ttk.Button(btn_row, text="Undo Move", style="Panel.TButton", command=self._undo_move).grid(row=0, column=1, sticky="ew", padx=3)
 
         records = ttk.Frame(info, style="Panel.TFrame")
-        records.grid(row=13, column=0, sticky="ew", pady=(6, 2))
+        records.grid(row=16, column=0, sticky="ew", pady=(6, 2))
         records.columnconfigure((0, 1), weight=1)
         ttk.Button(records, text="View history", style="Panel.TButton", command=self._view_history_popup).grid(row=0, column=0, sticky="ew", padx=2, pady=2)
         ttk.Button(records, text="Save history", style="Panel.TButton", command=self._save_history_now).grid(row=0, column=1, sticky="ew", padx=2, pady=2)
@@ -914,6 +920,8 @@ class TicTacToeGUI:
         if messagebox.askyesno("Reset scoreboard", "Reset all scores to zero?"):
             self.session.scoreboard = module.new_scoreboard()
             module.save_scoreboard(self.session.scoreboard)
+            self.match_scoreboard = module.new_scoreboard()
+            module.save_match_scoreboard(self.match_scoreboard)
             self._refresh_scoreboard()
             self.status_var.set("Scoreboard reset.")
 
@@ -963,6 +971,13 @@ class TicTacToeGUI:
             entry = sb.get(diff, module.DEFAULT_SCORE)
             lines.append(f"{diff}: X={entry['X']}  O={entry['O']}  D={entry['Draw']}")
         self.score_var.set("\n".join(lines))
+
+        msb = getattr(self, "match_scoreboard", {})
+        match_lines = []
+        for diff in module.DIFFICULTIES:
+            entry = msb.get(diff, module.DEFAULT_SCORE)
+            match_lines.append(f"{diff}: X={entry['X']}  O={entry['O']}  D={entry['Draw']}")
+        self.match_score_var.set("\n".join(match_lines) if match_lines else "No matches yet.")
         if self.session.history:
             recent = self.session.history[-3:]
             parsed = []
@@ -1077,6 +1092,14 @@ class TicTacToeGUI:
             else:
                 self.status_var.set(f"Match over! {self.match_winner} wins the match.")
             self._set_status_icon("done")
+            # persist match result per difficulty (skip Bo1)
+            if self.match_target > 1:
+                diff_key = self.session.difficulty_key
+                if diff_key not in self.match_scoreboard:
+                    self.match_scoreboard[diff_key] = module.DEFAULT_SCORE.copy()
+                self.match_scoreboard[diff_key][self.match_winner] += 1
+                module.save_match_scoreboard(self.match_scoreboard)
+                self._refresh_scoreboard()
 
         self.match_var.set(self._match_score_text())
         self._refresh_quick_stats()
