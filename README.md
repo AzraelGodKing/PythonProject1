@@ -1,22 +1,52 @@
-# Tic-Tac-Toe (CLI & GUI)
+# Tic-Tac-Toe Suite
 
-Terminal and Tkinter tic-tac-toe where you play as X against several AI personalities. Scores persist across runs, and the GUI remembers your toggle settings between sessions.
+A polished Python tic-tac-toe collection that runs both in the terminal and with a Tkinter windowed interface. The project includes multiple AI personalities, persistent scorekeeping, and configurable settings so you can explore strategies, demo the game, or just play a quick match without any external dependencies.
 
-## Features
-- Three difficulties (Easy random, Normal with personalities, Hard minimax) plus Normal personalities: balanced, defensive, aggressive, misdirection, mirror.
-- CLI play with hints, persistent scoreboard, session history logging, and input via row/col or single digits.
-- GUI with styled board, status/score panels, undo/hint buttons, options popup (themes: default/high-contrast/colorblind/light), larger fonts, animations/sound toggles, and keyboard shortcuts.
-- Settings persist across runs; settings files are backed up automatically for recovery.
-- Scoreboard tamper detection and automatic recovery from the last valid snapshot.
+## Highlights
+- **Game modes:** Human vs AI in the CLI or GUI, plus an AI-vs-AI simulator with its own scoreboard.
+- **AI depth:** Easy random play, a set of Normal personas (balanced, defensive, aggressive, misdirection, mirror), and a Hard minimax opponent.
+- **Resilient data:** Automatic backups for scoreboards and GUI settings to guard against tampering or corruption.
+- **Standard library only:** Runs on CPython 3.10+ with no third-party packages. Tkinter is bundled with most CPython distributions.
 
-## Run
-- CLI: `py -3 tic-tac-toe.py`
-- GUI: `py -3 gui.py`
+## Setup
+1. Clone the repository and move into the project root.
+2. (Optional) Create and activate a virtual environment if you plan to extend the project:
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\\Scripts\\activate
+   ```
+3. Launch commands from the repository root so assets and logs resolve correctly.
 
-## Tests
-Run the test suite (CLI and GUI smoke): `py -3 -m unittest -q`
+## Running the games
+- **CLI:**
+  ```bash
+  python tic-tac-toe.py
+  ```
+  Guides you through move input and records results in the main scoreboard.
 
-## Notes
-- GUI settings persist in `gui_settings.json` (backup in `logs/gui_settings.json.bak`). Override location with `GUI_SETTINGS_PATH`.
-- Session history logs rotate with timestamps when saving from the CLI; the GUI exposes history viewing/saving.
-- Logs folder is tracked (`logs/.gitkeep`) for backups.
+- **GUI:**
+  ```bash
+  python gui.py
+  ```
+  Opens a Tkinter window with board controls, score tracking, and configurable themes (default, high-contrast, colorblind, light).
+
+- **AI vs AI:**
+  ```bash
+  python ai_vs_ai.py
+  ```
+  Choose two AI personas and a round count to watch automated play. Results save to a dedicated AI-vs-AI scoreboard.
+
+## Controls and workflows
+- **CLI conveniences:** Row/column or single-digit input, hints, undo, persistent scoreboard, and session history logging.
+- **GUI controls:** Undo and hint buttons, status panel, scoreboard, options dialog for themes, font sizing, animation and sound toggles, plus keyboard shortcuts.
+
+## Data and persistence
+- **Scoreboards:** Stored under `data/scoreboard/` with automatic `.bak` backups.
+- **GUI settings:** Written to `gui_settings.json` (backed up at `logs/gui_settings.json.bak`). Override the location with the `GUI_SETTINGS_PATH` environment variable.
+- **Logs:** Session histories and backups live under `logs/`; the folder is tracked via `logs/.gitkeep`.
+
+## Testing
+Run the bundled smoke tests from the project root:
+```bash
+python -m unittest -q
+```
