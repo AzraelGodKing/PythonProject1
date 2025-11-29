@@ -50,3 +50,14 @@ Run the bundled smoke tests from the project root:
 ```bash
 python -m unittest -q
 ```
+
+## Install & CLI entry points
+With Python 3.10+ available, you can install editable tooling and get commands on your PATH:
+```bash
+pip install -e .
+```
+
+New commands after install:
+- `tictactoe` — launch the CLI game (with flags for difficulty/personality and best-of length).
+- `tictactoe-gui` — open the Tkinter GUI.
+- `tictactoe-ai` — run the AI-vs-AI simulator.

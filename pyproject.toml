@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tictactoe-suite"
+version = "0.1.0"
+description = "Tic-Tac-Toe suite with CLI, Tkinter GUI, and AI vs AI simulator."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+tictactoe = "tictactoe:main"
+tictactoe-gui = "gui:main"
+tictactoe-ai = "ai_vs_ai:main"
+
+[tool.setuptools]
+packages = ["tictactoe"]
+py-modules = ["gui", "ai_vs_ai", "options", "scoreboard"]
