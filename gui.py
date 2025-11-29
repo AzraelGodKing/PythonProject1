@@ -790,25 +790,30 @@ class TicTacToeGUI:
         self.status_label = ttk.Label(status_frame, textvariable=self.status_var, style="Status.TLabel", font=self._font("title"), wraplength=240)
         self.status_label.grid(row=1, column=1, sticky="w", pady=(2, 6))
 
-        ttk.Label(info, text="Scoreboard", style="Title.TLabel").grid(row=2, column=0, sticky="w", pady=(4, 0))
-        self.score_label = ttk.Label(info, textvariable=self.score_var, style="App.TLabel", font=self._font("text"), wraplength=260, justify="left")
-        self.score_label.grid(row=3, column=0, sticky="w", pady=(2, 6))
+        sb_frame = ttk.Frame(info, style="Panel.TFrame")
+        sb_frame.grid(row=2, column=0, sticky="ew", pady=(4, 6))
+        sb_frame.columnconfigure((0, 1), weight=1)
 
-        ttk.Label(info, text="Match Scoreboard", style="Title.TLabel").grid(row=4, column=0, sticky="w")
-        self.match_score_label = ttk.Label(info, textvariable=self.match_score_var, style="App.TLabel", font=self._font("text"), wraplength=260, justify="left")
-        self.match_score_label.grid(row=5, column=0, sticky="w", pady=(2, 6))
+        ttk.Label(sb_frame, text="Scoreboard", style="Title.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Label(sb_frame, text="Match Scoreboard", style="Title.TLabel").grid(row=0, column=1, sticky="w")
 
-        ttk.Label(info, text="Match Score", style="Title.TLabel").grid(row=6, column=0, sticky="w")
+        self.score_label = ttk.Label(sb_frame, textvariable=self.score_var, style="App.TLabel", font=self._font("text"), wraplength=180, justify="left")
+        self.score_label.grid(row=1, column=0, sticky="w", pady=(2, 0))
+
+        self.match_score_label = ttk.Label(sb_frame, textvariable=self.match_score_var, style="App.TLabel", font=self._font("text"), wraplength=180, justify="left")
+        self.match_score_label.grid(row=1, column=1, sticky="w", pady=(2, 0))
+
+        ttk.Label(info, text="Match Score", style="Title.TLabel").grid(row=3, column=0, sticky="w")
         self.match_label = ttk.Label(info, textvariable=self.match_var, style="App.TLabel", font=self._font("text"), wraplength=260, justify="left")
-        self.match_label.grid(row=7, column=0, sticky="w", pady=(2, 6))
+        self.match_label.grid(row=4, column=0, sticky="w", pady=(2, 6))
 
-        ttk.Label(info, text="Quick Stats", style="Title.TLabel").grid(row=8, column=0, sticky="w")
+        ttk.Label(info, text="Quick Stats", style="Title.TLabel").grid(row=5, column=0, sticky="w")
         self.quick_stats_label = ttk.Label(info, textvariable=self.quick_stats_var, style="App.TLabel", font=self._font("text"), wraplength=260, justify="left")
-        self.quick_stats_label.grid(row=9, column=0, sticky="w", pady=(2, 6))
+        self.quick_stats_label.grid(row=6, column=0, sticky="w", pady=(2, 6))
 
-        ttk.Label(info, text="Recent Results", style="Title.TLabel").grid(row=10, column=0, sticky="w")
+        ttk.Label(info, text="Recent Results", style="Title.TLabel").grid(row=7, column=0, sticky="w")
         self.history_label = ttk.Label(info, textvariable=self.history_var, style="App.TLabel", font=self._font("text"), wraplength=260, justify="left")
-        self.history_label.grid(row=11, column=0, sticky="w", pady=(2, 6))
+        self.history_label.grid(row=8, column=0, sticky="w", pady=(2, 6))
 
         ttk.Label(info, text="Shortcuts", style="Title.TLabel").grid(row=12, column=0, sticky="w")
         ttk.Label(
