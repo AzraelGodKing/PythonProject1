@@ -7,6 +7,8 @@
 !scoreboard.py
 !ai_vs_ai.py
 !README.md
+!tictactoe/
+!tictactoe/**
 !data/
 !data/logs/
 !data/logs/.gitkeep

@@ -3,12 +3,10 @@ Basic Tkinter UI for the tic-tac-toe game logic in tic-tac-toe.py.
 The UI is a thin layer over the existing logic: board state, AI moves, and scoreboard persistence.
 """
 
-import importlib.util
 import json
 import logging
 from logging.handlers import RotatingFileHandler
 import os
-import pathlib
 import tkinter as tk
 import atexit
 import math
@@ -16,16 +14,12 @@ from typing import Optional
 from tkinter import messagebox, ttk
 import options
 import ai_vs_ai
+import tictactoe as game
 
 
-MODULE_PATH = pathlib.Path(__file__).with_name("tic-tac-toe.py")
 LOG_DIR = os.path.join("data", "logs")
 SETTINGS_FILE = "gui_settings.json"
 SETTINGS_BACKUP = os.path.join(LOG_DIR, "gui_settings.json.bak")
-spec = importlib.util.spec_from_file_location("tictactoe_module_gui", MODULE_PATH)
-module = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
-assert spec.loader is not None
-spec.loader.exec_module(module)  # type: ignore[arg-type]
 
 PALETTE_DEFAULT = {
     "BG": "#0f172a",
@@ -119,28 +113,28 @@ FONTS_LARGE = {
 
 class GameSession:
     def __init__(self) -> None:
-        self.scoreboard = module.load_scoreboard()
+        self.scoreboard = game.load_scoreboard()
         self.difficulty_key = "Easy"
         self.personality = "standard"
-        self.ai_move_fn = module.ai_move_easy
+        self.ai_move_fn = game.ai_move_easy
         self.board = [" "] * 9
         self.game_over = False
         self.history = []
         self.moves = []
-        loaded_history = module.load_session_history_from_file()
+        loaded_history = game.load_session_history_from_file()
         if loaded_history:
             self.history = [(d, r, ts) for d, r, ts, _ in loaded_history]
-        self.last_history_path: str = module.HISTORY_FILE
+        self.last_history_path: str = game.HISTORY_FILE
 
     def set_difficulty(self, level: str, personality: str = "standard") -> None:
         self.difficulty_key = level
         self.personality = personality
         if level == "Easy":
-            self.ai_move_fn = module.ai_move_easy
+            self.ai_move_fn = game.ai_move_easy
         elif level == "Normal":
-            self.ai_move_fn = module.NORMAL_PERSONALITIES.get(personality, module.ai_move_normal)
+            self.ai_move_fn = game.NORMAL_PERSONALITIES.get(personality, game.ai_move_normal)
         else:
-            self.ai_move_fn = module.ai_move_hard
+            self.ai_move_fn = game.ai_move_hard
 
     def reset_board(self) -> None:
         self.board = [" "] * 9
@@ -148,14 +142,14 @@ class GameSession:
         self.moves = []
 
     def label(self) -> str:
-        return module.difficulty_display_label(self.difficulty_key, self.personality)
+        return game.difficulty_display_label(self.difficulty_key, self.personality)
 
     def record_result(self, winner: str) -> None:
         if self.difficulty_key not in self.scoreboard:
-            self.scoreboard[self.difficulty_key] = module.DEFAULT_SCORE.copy()
+            self.scoreboard[self.difficulty_key] = game.DEFAULT_SCORE.copy()
         self.scoreboard[self.difficulty_key][winner] += 1
-        module.save_scoreboard(self.scoreboard)
-        ts = module.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        game.save_scoreboard(self.scoreboard)
+        ts = game.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.history.append((self.label(), winner, ts))
 
 
@@ -180,7 +174,7 @@ class TicTacToeGUI:
         self.fonts = dict(FONTS_LARGE if self.large_fonts.get() else FONTS_DEFAULT)
         self._configure_style()
         self.session = GameSession()
-        self.match_scoreboard = module.load_match_scoreboard()
+        self.match_scoreboard = game.load_match_scoreboard()
         self.match_length = 1
         self.match_length_var = tk.StringVar(value="1")
         self.match_target = 1
@@ -942,7 +936,7 @@ class TicTacToeGUI:
                 continue
             board[idx] = "O"
             try:
-                score = module._minimax(board, False, 0)  # type: ignore[attr-defined]
+                score = game._minimax(board, False, 0)  # type: ignore[attr-defined]
             except Exception:
                 score = 0
             board[idx] = " "
@@ -989,10 +983,10 @@ class TicTacToeGUI:
 
     def _reset_scoreboard(self) -> None:
         if messagebox.askyesno("Reset scoreboard", "Reset all scores to zero?"):
-            self.session.scoreboard = module.new_scoreboard()
-            module.save_scoreboard(self.session.scoreboard)
-            self.match_scoreboard = module.new_scoreboard()
-            module.save_match_scoreboard(self.match_scoreboard)
+            self.session.scoreboard = game.new_scoreboard()
+            game.save_scoreboard(self.session.scoreboard)
+            self.match_scoreboard = game.new_scoreboard()
+            game.save_match_scoreboard(self.match_scoreboard)
             self._refresh_scoreboard()
             self.status_var.set("Scoreboard reset.")
 
@@ -1038,15 +1032,15 @@ class TicTacToeGUI:
     def _refresh_scoreboard(self) -> None:
         sb = self.session.scoreboard
         lines = []
-        for diff in module.DIFFICULTIES:
-            entry = sb.get(diff, module.DEFAULT_SCORE)
+        for diff in game.DIFFICULTIES:
+            entry = sb.get(diff, game.DEFAULT_SCORE)
             lines.append(f"{diff}: X={entry['X']}  O={entry['O']}  D={entry['Draw']}")
         self.score_var.set("\n".join(lines))
 
         msb = getattr(self, "match_scoreboard", {})
         match_lines = []
-        for diff in module.DIFFICULTIES:
-            entry = msb.get(diff, module.DEFAULT_SCORE)
+        for diff in game.DIFFICULTIES:
+            entry = msb.get(diff, game.DEFAULT_SCORE)
             match_lines.append(f"{diff}: X={entry['X']}  O={entry['O']}  D={entry['Draw']}")
         self.match_score_var.set("\n".join(match_lines) if match_lines else "No matches yet.")
         if self.session.history:
@@ -1107,8 +1101,8 @@ class TicTacToeGUI:
         self.session.moves.append((idx, "X"))
         self._refresh_move_log()
         self._refresh_board()
-        winner = module.check_winner(self.session.board)
-        if winner or module.board_full(self.session.board):
+        winner = game.check_winner(self.session.board)
+        if winner or game.board_full(self.session.board):
             self._finish_round(winner or "Draw")
             return
 
@@ -1128,8 +1122,8 @@ class TicTacToeGUI:
         self._flash_ai_move(ai_idx)
         self.pending_ai_id = None
         self.last_move_idx = None
-        winner = module.check_winner(self.session.board)
-        if winner or module.board_full(self.session.board):
+        winner = game.check_winner(self.session.board)
+        if winner or game.board_full(self.session.board):
             self._finish_round(winner or "Draw")
             return
         self.status_var.set("Your turn.")
@@ -1167,9 +1161,9 @@ class TicTacToeGUI:
             if self.match_target > 1:
                 diff_key = self.session.difficulty_key
                 if diff_key not in self.match_scoreboard:
-                    self.match_scoreboard[diff_key] = module.DEFAULT_SCORE.copy()
+                    self.match_scoreboard[diff_key] = game.DEFAULT_SCORE.copy()
                 self.match_scoreboard[diff_key][self.match_winner] += 1
-                module.save_match_scoreboard(self.match_scoreboard)
+                game.save_match_scoreboard(self.match_scoreboard)
                 self._refresh_scoreboard()
 
         self.match_var.set(self._match_score_text())
@@ -1177,9 +1171,9 @@ class TicTacToeGUI:
 
     def _refresh_quick_stats(self) -> None:
         sb = self.session.scoreboard
-        x_total = sum(sb.get(diff, {}).get("X", 0) for diff in module.DIFFICULTIES)
-        o_total = sum(sb.get(diff, {}).get("O", 0) for diff in module.DIFFICULTIES)
-        d_total = sum(sb.get(diff, {}).get("Draw", 0) for diff in module.DIFFICULTIES)
+        x_total = sum(sb.get(diff, {}).get("X", 0) for diff in game.DIFFICULTIES)
+        o_total = sum(sb.get(diff, {}).get("O", 0) for diff in game.DIFFICULTIES)
+        d_total = sum(sb.get(diff, {}).get("Draw", 0) for diff in game.DIFFICULTIES)
         games = x_total + o_total + d_total
         match_line = (
             f"Match: Bo{self.match_length}, Round {self.match_rounds + (0 if self.match_over else 1)}/{self.match_length} "
@@ -1252,7 +1246,7 @@ class TicTacToeGUI:
         open_spots = [i for i, v in enumerate(board_copy) if v == " "]
         if not open_spots:
             return
-        hint_idx = module.ai_move_hard(board_copy)
+        hint_idx = game.ai_move_hard(board_copy)
         r, c = divmod(hint_idx, 3)
         btn = self.buttons[r][c]
         btn.configure(bg=self._color("O"), fg=self._color("BG"), relief="solid")
@@ -1295,9 +1289,9 @@ class TicTacToeGUI:
         total_games = sum(entry.get("X", 0) + entry.get("O", 0) + entry.get("Draw", 0) for entry in sb.values())
         total_draws = sum(entry.get("Draw", 0) for entry in sb.values())
 
-        hard = sb.get("Hard", module.DEFAULT_SCORE)
-        normal = sb.get("Normal", module.DEFAULT_SCORE)
-        easy = sb.get("Easy", module.DEFAULT_SCORE)
+        hard = sb.get("Hard", game.DEFAULT_SCORE)
+        normal = sb.get("Normal", game.DEFAULT_SCORE)
+        easy = sb.get("Easy", game.DEFAULT_SCORE)
 
         hard_wins = hard.get("X", 0)
         normal_wins = normal.get("X", 0)
@@ -1409,7 +1403,7 @@ class TicTacToeGUI:
         if not self.session.history:
             self.status_var.set("No history to save yet.")
             return
-        path = module.save_session_history_to_file(
+        path = game.save_session_history_to_file(
             [(d, r, ts, 0.0) for d, r, ts in self.session.history], rotate=self.rotate_logs.get()
         )
         self.session.last_history_path = path
@@ -1628,8 +1622,8 @@ class TicTacToeGUI:
             r, c = divmod(idx, 3)
             lbl = self.ai_board_labels[r][c]
             lbl.configure(text=current, fg=self._color("ACCENT") if current == "X" else self._color("O"))
-            winner = module.check_winner(board)
-            if winner is None and module.board_full(board):
+            winner = game.check_winner(board)
+            if winner is None and game.board_full(board):
                 winner = "Draw"
 
         if winner:

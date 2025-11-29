@@ -3,17 +3,11 @@ AI vs AI mode with its own scoreboard.
 Select two AI variants and let them play automatic rounds while tracking wins/draws separately from the player scoreboard.
 """
 
-import importlib.util
 import json
 import os
-import pathlib
 from typing import Callable, Dict, List, Tuple
 
-MODULE_PATH = pathlib.Path(__file__).with_name("tic-tac-toe.py")
-spec = importlib.util.spec_from_file_location("tictactoe_module_ai", MODULE_PATH)
-module = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
-assert spec and spec.loader
-spec.loader.exec_module(module)  # type: ignore[call-arg]
+import tictactoe as module
 
 AI_SCOREBOARD_FILE = os.path.join("data", "scoreboard", "ai_vs_ai.json")
 AI_SCOREBOARD_BACKUP = AI_SCOREBOARD_FILE + ".bak"
