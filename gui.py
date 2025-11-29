@@ -175,6 +175,7 @@ class TicTacToeGUI:
         self.show_coords = tk.BooleanVar(value=settings["show_coords"])
         self.show_heatmap = tk.BooleanVar(value=settings.get("show_heatmap", False))
         self.show_commentary = tk.BooleanVar(value=settings.get("show_commentary", False))
+        self.show_intro_overlay = tk.BooleanVar(value=settings.get("show_intro_overlay", True))
         self.palette = self._resolve_palette(self.theme_var.get())
         self.fonts = dict(FONTS_LARGE if self.large_fonts.get() else FONTS_DEFAULT)
         self._configure_style()
@@ -190,6 +191,7 @@ class TicTacToeGUI:
         self.history_popup: Optional[tk.Toplevel] = None
         self.achievements_popup: Optional[tk.Toplevel] = None
         self.ai_vs_ai_popup: Optional[tk.Toplevel] = None
+        self.intro_popup: Optional[tk.Toplevel] = None
         self.ai_running = False
         self.ai_paused = False
         self.achievements_filter_earned = tk.BooleanVar(value=False)
@@ -221,6 +223,7 @@ class TicTacToeGUI:
         self.player_turn = True
         self._build_menu()
         self._apply_compact_layout()
+        self._maybe_show_intro_overlay()
 
     def _color(self, key: str) -> str:
         return self.palette[key]
@@ -376,6 +379,7 @@ class TicTacToeGUI:
         view_menu = tk.Menu(menubar, tearoff=0)
         view_menu.add_command(label="Achievements", command=self._show_achievements_popup)
         view_menu.add_command(label="History", command=self._view_history_popup)
+        view_menu.add_command(label="Welcome Overlay", command=lambda: self._show_intro_overlay(force=True))
         view_menu.add_command(label="Options", command=self._show_options_popup)
         menubar.add_cascade(label="View", menu=view_menu)
 
@@ -394,6 +398,7 @@ class TicTacToeGUI:
             "show_heatmap": False,
             "show_commentary": False,
             "compact_sidebar": False,
+            "show_intro_overlay": True,
         }
         data = None
         try:
@@ -441,6 +446,7 @@ class TicTacToeGUI:
             "show_heatmap": bool(data.get("show_heatmap", False)),
             "show_commentary": bool(data.get("show_commentary", defaults["show_commentary"])),
             "compact_sidebar": bool(data.get("compact_sidebar", defaults["compact_sidebar"])),
+            "show_intro_overlay": bool(data.get("show_intro_overlay", defaults["show_intro_overlay"])),
         }
 
     def _save_settings(self) -> None:
@@ -456,6 +462,7 @@ class TicTacToeGUI:
             "show_heatmap": self.show_heatmap.get(),
             "show_commentary": self.show_commentary.get(),
             "compact_sidebar": self.compact_sidebar.get(),
+            "show_intro_overlay": self.show_intro_overlay.get(),
         }
         try:
             # write backup first
@@ -576,6 +583,70 @@ class TicTacToeGUI:
             self.history_label.configure(wraplength=wrap)
             self.match_label.configure(wraplength=wrap)
 
+    def _maybe_show_intro_overlay(self) -> None:
+        if not self.show_intro_overlay.get():
+            return
+        self._show_intro_overlay(force=True)
+
+    def _show_intro_overlay(self, force: bool = False) -> None:
+        if not force and not self.show_intro_overlay.get():
+            return
+        if self.intro_popup and self.intro_popup.winfo_exists():
+            self.intro_popup.lift()
+            self.intro_popup.focus_set()
+            return
+        popup = tk.Toplevel(self.root)
+        popup.title("Welcome to Tic-Tac-Toe")
+        popup.configure(bg=self._color("BG"))
+        popup.transient(self.root)
+        popup.geometry("560x460")
+        self.intro_popup = popup
+
+        frame = ttk.Frame(popup, padding=12, style="App.TFrame")
+        frame.pack(fill="both", expand=True)
+        ttk.Label(frame, text="Quick tour", style="Title.TLabel").pack(anchor="w", pady=(0, 6))
+        ttk.Label(
+            frame,
+            text="New here? Start a game, toggle options, and track your progress. You can reopen this overlay anytime from View > Welcome Overlay.",
+            style="App.TLabel",
+            wraplength=520,
+            justify="left",
+        ).pack(anchor="w", pady=(0, 8))
+
+        tips = [
+            "Set difficulty/personality at the top bar, then click New Game.",
+            "Use Undo and Hint buttons under the board to recover or peek.",
+            "Match panel: choose best-of length, then run a whole match.",
+            "Options dialog: themes, animations/sound, coordinates, sidebar width.",
+            "View menu: achievements, history, AI vs AI simulator, and this overlay.",
+            "Scoreboard panel shows lifetime and match results; history saves in logs.",
+        ]
+        for tip in tips:
+            ttk.Label(frame, text=f"- {tip}", style="App.TLabel", wraplength=520, justify="left").pack(anchor="w", pady=2)
+
+        ttk.Separator(frame, orient="horizontal").pack(fill="x", pady=(10, 8))
+        ttk.Checkbutton(
+            frame,
+            text="Show this overlay at launch",
+            variable=self.show_intro_overlay,
+            style="App.TCheckbutton",
+            command=self._save_settings,
+        ).pack(anchor="w", pady=(0, 8))
+
+        def _close() -> None:
+            try:
+                popup.destroy()
+            finally:
+                self.intro_popup = None
+                self._save_settings()
+
+        btns = ttk.Frame(frame, style="App.TFrame")
+        btns.pack(fill="x")
+        ttk.Button(btns, text="Open Options", style="Panel.TButton", command=self._show_options_popup).pack(side="left")
+        ttk.Button(btns, text="Start playing", style="Accent.TButton", command=lambda: _close()).pack(side="right")
+
+        popup.protocol("WM_DELETE_WINDOW", _close)
+
     def _handle_exception(self, exc_type, exc_value, exc_traceback) -> None:
         self.logger.exception("Unhandled exception", exc_info=(exc_type, exc_value, exc_traceback))
         messagebox.showerror("Error", "An unexpected error occurred. See data/logs/app.log for details.")
@@ -635,6 +706,7 @@ class TicTacToeGUI:
         self.sound_enabled.set(True)
         self.show_coords.set(False)
         self.compact_sidebar.set(False)
+        self.show_intro_overlay.set(True)
         self._save_settings()
         self._apply_compact_layout()
 
