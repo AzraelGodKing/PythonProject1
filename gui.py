@@ -9,6 +9,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 import os
 import pathlib
+import random
 import tkinter as tk
 import atexit
 import math
@@ -622,26 +623,61 @@ class TicTacToeGUI:
     def _auto_commentary(self, symbol: str, idx: int, pre_board: list[str]) -> None:
         comment = ""
         opponent = "O" if symbol == "X" else "X"
-        # win
-        if module.check_winner(self.session.board) == symbol:
-            r, c = divmod(idx, 3)
-            comment = f"{symbol} wins with the strike at {r + 1},{c + 1}!"
-        # block
-        elif module.find_winning_move(pre_board, opponent) == idx:
-            comment = f"Great block by {symbol}."
-        # winning threat
-        elif module.find_winning_move(pre_board, symbol) == idx:
-            comment = f"{symbol} sets up a winning line."
-        # fork creation
-        elif module.find_fork_move(pre_board, symbol) == idx:
-            comment = f"{symbol} builds a fork—multiple threats now."
-        # center/corner flair
-        elif idx == 4:
-            comment = f"{symbol} controls the center."
-        elif idx in (0, 2, 6, 8) and pre_board.count("X") + pre_board.count("O") == 0:
-            comment = f"{symbol} starts from the corner."
+        r, c = divmod(idx, 3)
+        total_before = pre_board.count("X") + pre_board.count("O")
 
-        if comment and self.move_annotations:
+        win_msgs = [
+            f"{symbol} drills the winning shot at {r + 1},{c + 1}!",
+            f"Game over—{symbol} closes it out at {r + 1},{c + 1}.",
+            f"{symbol} seals the deal on {r + 1},{c + 1}—what a finish.",
+        ]
+        block_msgs = [
+            f"{symbol} slams the door on {opponent}'s win.",
+            f"Clutch block by {symbol}—threat neutralized.",
+            f"{symbol} spots the danger and stops it cold.",
+        ]
+        threat_msgs = [
+            f"{symbol} lines up a winning threat.",
+            f"Pressure building: {symbol} sets a trap.",
+            f"{symbol} sets the table for a finish.",
+        ]
+        fork_msgs = [
+            f"{symbol} crafts a fork—multiple outs now.",
+            f"Two threats at once! {symbol} forks the board.",
+            f"{symbol} creates a double threat. Tough spot for {opponent}.",
+        ]
+        center_msgs = [
+            f"{symbol} claims the center—classic control.",
+            f"Center grab by {symbol}; options just opened up.",
+        ]
+        corner_start_msgs = [
+            f"{symbol} opens from the corner—old-school strong start.",
+            f"Corner opener for {symbol}; looking solid.",
+        ]
+        filler_msgs = [
+            f"{symbol} keeps the pressure on.",
+            f"{symbol} probes the position.",
+            f"{symbol} plays it cool, setting up the board.",
+            f"{symbol} looks for an angle.",
+        ]
+
+        # Determine which bucket to pull from
+        if module.check_winner(self.session.board) == symbol:
+            comment = random.choice(win_msgs)
+        elif module.find_winning_move(pre_board, opponent) == idx:
+            comment = random.choice(block_msgs)
+        elif module.find_winning_move(pre_board, symbol) == idx:
+            comment = random.choice(threat_msgs)
+        elif module.find_fork_move(pre_board, symbol) == idx:
+            comment = random.choice(fork_msgs)
+        elif idx == 4:
+            comment = random.choice(center_msgs)
+        elif idx in (0, 2, 6, 8) and total_before == 0:
+            comment = random.choice(corner_start_msgs)
+        else:
+            comment = random.choice(filler_msgs)
+
+        if self.move_annotations:
             self.move_annotations[-1] = comment
             self._refresh_move_log()
 
