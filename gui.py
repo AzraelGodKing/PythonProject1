@@ -768,17 +768,6 @@ class TicTacToeGUI:
         self.move_listbox.grid(row=1, column=0, sticky="nsew", pady=(4, 0))
         log_frame.columnconfigure(0, weight=1)
 
-        ttk.Label(log_frame, text="Quick stats", style="App.TLabel", font=self._font("title")).grid(row=2, column=0, sticky="w", pady=(8, 2))
-        self.quick_stats_inline = ttk.Label(
-            log_frame,
-            textvariable=self.quick_stats_var,
-            style="App.TLabel",
-            font=self._font("text"),
-            wraplength=600,
-            justify="left",
-        )
-        self.quick_stats_inline.grid(row=3, column=0, sticky="ew")
-
     def _build_info(self, parent: tk.Widget) -> None:
         info = ttk.Frame(parent, padding=12, style="Panel.TFrame")
         info.grid(row=0, column=0, sticky="nsew")
