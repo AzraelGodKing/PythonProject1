@@ -1070,6 +1070,11 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help="Choose text (default) or json summary output when auto-starting.",
     )
     parser.add_argument("--result-file", help="Optional path to write the summary JSON.")
+    parser.add_argument(
+        "--expect-winner",
+        choices=("X", "O", "Draw"),
+        help="If set, exit non-zero unless the match winner (or last result) matches.",
+    )
     return parser.parse_args(argv)
 
 
@@ -1092,6 +1097,12 @@ def main(argv: Optional[List[str]] = None) -> None:
             non_interactive=args.non_interactive,
             summary=summary,
         )
+        expected = args.expect_winner
+        if expected:
+            actual = summary.get("match_winner") or summary.get("last_result")
+            if actual != expected:
+                print(f"Expected winner {expected}, but got {actual}.")
+                raise SystemExit(1)
         if args.output == "json":
             payload = json.dumps(summary, indent=2)
             print(payload)
