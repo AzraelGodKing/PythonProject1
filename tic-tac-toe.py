@@ -28,6 +28,9 @@ print_scoreboard = scoreboard.print_scoreboard
 load_scoreboard = scoreboard.load_scoreboard
 save_scoreboard = scoreboard.save_scoreboard
 maybe_reset_scoreboard = scoreboard.maybe_reset_scoreboard
+load_match_scoreboard = scoreboard.load_match_scoreboard
+save_match_scoreboard = scoreboard.save_match_scoreboard
+print_match_scoreboard = scoreboard.print_match_scoreboard
 
 
 def print_board(board: List[str]) -> None:
@@ -828,6 +831,7 @@ def play_session(scoreboard: Dict[str, Dict[str, int]]) -> Dict[str, Dict[str, i
     _MINIMAX_CACHE.clear()
     session_history: List[HistoryEntry] = load_session_history_from_file()
     stats = _new_stats()
+    match_scoreboard = load_match_scoreboard()
 
     diff_key, ai_move_fn, personality = choose_difficulty()
     difficulty_label = difficulty_display_label(diff_key, personality)
@@ -891,6 +895,12 @@ def play_session(scoreboard: Dict[str, Dict[str, int]]) -> Dict[str, Dict[str, i
                     print("Match over! It ended in a draw.")
             else:
                 print(f"Match over! Winner: {match_winner}")
+            # record match outcome per difficulty
+            if diff_key not in match_scoreboard:
+                match_scoreboard[diff_key] = DEFAULT_SCORE.copy()
+            match_scoreboard[diff_key][match_winner] += 1
+            save_match_scoreboard(match_scoreboard)
+            print_match_scoreboard(match_scoreboard)
             another_match = input("Start another match? (y/n): ").strip().lower()
             if another_match in {"y", "yes"}:
                 match_length = choose_match_length()
@@ -913,6 +923,7 @@ def play_session(scoreboard: Dict[str, Dict[str, int]]) -> Dict[str, Dict[str, i
     print_scoreboard(scoreboard)
     print_stats(stats)
     print_history(session_history)
+    print_match_scoreboard(match_scoreboard)
 
     save_session_history_to_file(session_history, rotate=True)
 
@@ -932,24 +943,27 @@ def play_game() -> None:
             "\nMain menu:\n"
             "1) Start session\n"
             "2) View scoreboard\n"
-            "3) View saved session history file\n"
-            "4) Reset scoreboard\n"
-            "5) Quit\n"
+            "3) View match scoreboard\n"
+            "4) View saved session history file\n"
+            "5) Reset scoreboard\n"
+            "6) Quit\n"
         )
         choice = input("Select an option: ").strip().lower()
         if choice in {"1", "start", "s"}:
             scoreboard = play_session(scoreboard)
         elif choice in {"2", "scoreboard", "view"}:
             print_scoreboard(scoreboard)
-        elif choice in {"3", "history", "h"}:
+        elif choice in {"3", "match", "m"}:
+            print_match_scoreboard(load_match_scoreboard())
+        elif choice in {"4", "history", "h"}:
             view_saved_history()
-        elif choice in {"4", "reset", "r"}:
+        elif choice in {"5", "reset", "r"}:
             scoreboard = maybe_reset_scoreboard(scoreboard)
             print_scoreboard(scoreboard)
-        elif choice in {"5", "quit", "q", "exit"}:
+        elif choice in {"6", "quit", "q", "exit"}:
             break
         else:
-            print("Please choose 1-5 or a listed command.")
+            print("Please choose 1-6 or a listed command.")
 
     print("\nThanks for playing!")
     print_scoreboard(scoreboard)
