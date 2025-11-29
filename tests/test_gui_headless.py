@@ -16,7 +16,12 @@ class TestGuiHeadless(unittest.TestCase):
 
             import gui  # noqa: WPS433
 
-            root = tk.Tk()
+            try:
+                root = tk.Tk()
+            except tk.TclError:
+                self.skipTest("Tk unavailable in headless environment")
+                return
+
             root.withdraw()
             try:
                 app = gui.TicTacToeGUI(root)
