@@ -105,13 +105,13 @@ PALETTE_MONO = {
 }
 
 FONTS_DEFAULT = {
-    "board": ("Segoe UI", 18, "bold"),
+    "board": ("Segoe UI", 16, "bold"),
     "text": ("Segoe UI", 11, "normal"),
     "title": ("Segoe UI", 13, "bold"),
 }
 
 FONTS_LARGE = {
-    "board": ("Segoe UI", 22, "bold"),
+    "board": ("Segoe UI", 19, "bold"),
     "text": ("Segoe UI", 13, "normal"),
     "title": ("Segoe UI", 15, "bold"),
 }
@@ -714,7 +714,7 @@ class TicTacToeGUI:
             btn.grid(row=0, column=i, padx=2)
 
     def _build_board(self, parent: tk.Widget) -> None:
-        board_frame = ttk.Frame(parent, padding=10, style="Panel.TFrame")
+        board_frame = ttk.Frame(parent, padding=6, style="Panel.TFrame")
         board_frame.grid(row=1, column=0, sticky="nsew")
         board_frame.columnconfigure((0, 1, 2), weight=1)
         board_frame.rowconfigure((1, 2, 3), weight=1)
@@ -730,7 +730,8 @@ class TicTacToeGUI:
                     board_frame,
                     text=" ",
                     command=lambda i=idx: self._handle_player_move(i),
-                    width=4,
+                    width=3,
+                    height=1,
                     font=self._font("board"),
                     bg=self._color("CELL"),
                     fg=self._color("TEXT"),
