@@ -105,13 +105,13 @@ PALETTE_MONO = {
 }
 
 FONTS_DEFAULT = {
-    "board": ("Segoe UI", 18, "bold"),
+    "board": ("Segoe UI", 16, "bold"),
     "text": ("Segoe UI", 11, "normal"),
     "title": ("Segoe UI", 13, "bold"),
 }
 
 FONTS_LARGE = {
-    "board": ("Segoe UI", 22, "bold"),
+    "board": ("Segoe UI", 19, "bold"),
     "text": ("Segoe UI", 13, "normal"),
     "title": ("Segoe UI", 15, "bold"),
 }
@@ -174,6 +174,7 @@ class TicTacToeGUI:
         self.sound_enabled = tk.BooleanVar(value=settings["sound"])
         self.show_coords = tk.BooleanVar(value=settings["show_coords"])
         self.show_heatmap = tk.BooleanVar(value=settings.get("show_heatmap", False))
+        self.show_commentary = tk.BooleanVar(value=settings.get("show_commentary", False))
         self.palette = self._resolve_palette(self.theme_var.get())
         self.fonts = dict(FONTS_LARGE if self.large_fonts.get() else FONTS_DEFAULT)
         self._configure_style()
@@ -281,12 +282,18 @@ class TicTacToeGUI:
         os.makedirs(LOG_DIR, exist_ok=True)
         logger = logging.getLogger("tictactoe_gui")
         logger.setLevel(logging.INFO)
+        # Ensure fresh handler each launch; closed handlers can block writes.
+        for h in list(logger.handlers):
+            logger.removeHandler(h)
+            try:
+                h.close()
+            except Exception:
+                pass
         log_path = os.path.join(LOG_DIR, "app.log")
         handler = RotatingFileHandler(log_path, maxBytes=200_000, backupCount=3, encoding="utf-8", delay=True)
         fmt = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
         handler.setFormatter(fmt)
-        if not logger.handlers:
-            logger.addHandler(handler)
+        logger.addHandler(handler)
         logger.propagate = False
         return logger
 
@@ -385,6 +392,7 @@ class TicTacToeGUI:
             "sound": True,
             "show_coords": False,
             "show_heatmap": False,
+            "show_commentary": False,
             "compact_sidebar": False,
         }
         data = None
@@ -431,6 +439,7 @@ class TicTacToeGUI:
             "sound": bool(data.get("sound", defaults["sound"])),
             "show_coords": bool(data.get("show_coords", defaults["show_coords"])),
             "show_heatmap": bool(data.get("show_heatmap", False)),
+            "show_commentary": bool(data.get("show_commentary", defaults["show_commentary"])),
             "compact_sidebar": bool(data.get("compact_sidebar", defaults["compact_sidebar"])),
         }
 
@@ -445,6 +454,7 @@ class TicTacToeGUI:
             "sound": self.sound_enabled.get(),
             "show_coords": self.show_coords.get(),
             "show_heatmap": self.show_heatmap.get(),
+            "show_commentary": self.show_commentary.get(),
             "compact_sidebar": self.compact_sidebar.get(),
         }
         try:
@@ -555,7 +565,6 @@ class TicTacToeGUI:
             self.status_label.configure(font=self._font("title"))
             self.score_label.configure(font=self._font("text"))
             self.history_label.configure(font=self._font("text"))
-            self.log_label.configure(font=self._font("text"))
             self.match_label.configure(font=self._font("text"))
         self._save_settings()
 
@@ -565,7 +574,6 @@ class TicTacToeGUI:
             self.status_label.configure(wraplength=wrap)
             self.score_label.configure(wraplength=wrap)
             self.history_label.configure(wraplength=wrap)
-            self.log_label.configure(wraplength=wrap)
             self.match_label.configure(wraplength=wrap)
 
     def _handle_exception(self, exc_type, exc_value, exc_traceback) -> None:
@@ -714,7 +722,7 @@ class TicTacToeGUI:
             btn.grid(row=0, column=i, padx=2)
 
     def _build_board(self, parent: tk.Widget) -> None:
-        board_frame = ttk.Frame(parent, padding=10, style="Panel.TFrame")
+        board_frame = ttk.Frame(parent, padding=6, style="Panel.TFrame")
         board_frame.grid(row=1, column=0, sticky="nsew")
         board_frame.columnconfigure((0, 1, 2), weight=1)
         board_frame.rowconfigure((1, 2, 3), weight=1)
@@ -730,7 +738,8 @@ class TicTacToeGUI:
                     board_frame,
                     text=" ",
                     command=lambda i=idx: self._handle_player_move(i),
-                    width=4,
+                    width=3,
+                    height=1,
                     font=self._font("board"),
                     bg=self._color("CELL"),
                     fg=self._color("TEXT"),
@@ -768,17 +777,6 @@ class TicTacToeGUI:
         self.move_listbox.grid(row=1, column=0, sticky="nsew", pady=(4, 0))
         log_frame.columnconfigure(0, weight=1)
 
-        ttk.Label(log_frame, text="Quick stats", style="App.TLabel", font=self._font("title")).grid(row=2, column=0, sticky="w", pady=(8, 2))
-        self.quick_stats_inline = ttk.Label(
-            log_frame,
-            textvariable=self.quick_stats_var,
-            style="App.TLabel",
-            font=self._font("text"),
-            wraplength=600,
-            justify="left",
-        )
-        self.quick_stats_inline.grid(row=3, column=0, sticky="ew")
-
     def _build_info(self, parent: tk.Widget) -> None:
         info = ttk.Frame(parent, padding=12, style="Panel.TFrame")
         info.grid(row=0, column=0, sticky="nsew")
@@ -792,30 +790,32 @@ class TicTacToeGUI:
         self.status_label = ttk.Label(status_frame, textvariable=self.status_var, style="Status.TLabel", font=self._font("title"), wraplength=240)
         self.status_label.grid(row=1, column=1, sticky="w", pady=(2, 6))
 
-        ttk.Label(info, text="Scoreboard", style="Title.TLabel").grid(row=2, column=0, sticky="w", pady=(4, 0))
-        self.score_label = ttk.Label(info, textvariable=self.score_var, style="App.TLabel", font=self._font("text"), wraplength=260, justify="left")
-        self.score_label.grid(row=3, column=0, sticky="w", pady=(2, 6))
+        sb_frame = ttk.Frame(info, style="Panel.TFrame")
+        sb_frame.grid(row=2, column=0, sticky="ew", pady=(4, 6))
+        sb_frame.columnconfigure((0, 1), weight=1)
 
-        ttk.Label(info, text="Match Scoreboard", style="Title.TLabel").grid(row=4, column=0, sticky="w")
-        self.match_score_label = ttk.Label(info, textvariable=self.match_score_var, style="App.TLabel", font=self._font("text"), wraplength=260, justify="left")
-        self.match_score_label.grid(row=5, column=0, sticky="w", pady=(2, 6))
+        ttk.Label(sb_frame, text="Scoreboard", style="Title.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Label(sb_frame, text="Match Scoreboard", style="Title.TLabel").grid(row=0, column=1, sticky="w")
 
-        ttk.Label(info, text="Match Score", style="Title.TLabel").grid(row=6, column=0, sticky="w")
+        self.score_label = ttk.Label(sb_frame, textvariable=self.score_var, style="App.TLabel", font=self._font("text"), wraplength=180, justify="left")
+        self.score_label.grid(row=1, column=0, sticky="w", pady=(2, 0))
+
+        self.match_score_label = ttk.Label(sb_frame, textvariable=self.match_score_var, style="App.TLabel", font=self._font("text"), wraplength=180, justify="left")
+        self.match_score_label.grid(row=1, column=1, sticky="w", pady=(2, 0))
+
+        ttk.Label(info, text="Match Score", style="Title.TLabel").grid(row=3, column=0, sticky="w")
         self.match_label = ttk.Label(info, textvariable=self.match_var, style="App.TLabel", font=self._font("text"), wraplength=260, justify="left")
-        self.match_label.grid(row=7, column=0, sticky="w", pady=(2, 6))
+        self.match_label.grid(row=4, column=0, sticky="w", pady=(2, 6))
 
-        ttk.Label(info, text="Quick Stats", style="Title.TLabel").grid(row=8, column=0, sticky="w")
+        ttk.Label(info, text="Quick Stats", style="Title.TLabel").grid(row=5, column=0, sticky="w")
         self.quick_stats_label = ttk.Label(info, textvariable=self.quick_stats_var, style="App.TLabel", font=self._font("text"), wraplength=260, justify="left")
-        self.quick_stats_label.grid(row=9, column=0, sticky="w", pady=(2, 6))
+        self.quick_stats_label.grid(row=6, column=0, sticky="w", pady=(2, 6))
 
-        ttk.Label(info, text="Recent Results", style="Title.TLabel").grid(row=10, column=0, sticky="w")
+        ttk.Label(info, text="Recent Results", style="Title.TLabel").grid(row=7, column=0, sticky="w")
         self.history_label = ttk.Label(info, textvariable=self.history_var, style="App.TLabel", font=self._font("text"), wraplength=260, justify="left")
-        self.history_label.grid(row=11, column=0, sticky="w", pady=(2, 6))
+        self.history_label.grid(row=8, column=0, sticky="w", pady=(2, 6))
 
-        self.log_label = ttk.Label(info, textvariable=self.log_path_var, style="Muted.TLabel", font=self._font("text"), wraplength=260, justify="left")
-        self.log_label.grid(row=12, column=0, sticky="w", pady=(4, 8))
-
-        ttk.Label(info, text="Shortcuts", style="Title.TLabel").grid(row=13, column=0, sticky="w")
+        ttk.Label(info, text="Shortcuts", style="Title.TLabel").grid(row=12, column=0, sticky="w")
         ttk.Label(
             info,
             text="Moves: 1-9  |  New: N/Ctrl+N",
@@ -823,16 +823,16 @@ class TicTacToeGUI:
             font=self._font("text"),
             wraplength=260,
             justify="left",
-        ).grid(row=14, column=0, sticky="w", pady=(2, 8))
+        ).grid(row=13, column=0, sticky="w", pady=(2, 8))
 
         btn_row = ttk.Frame(info, style="Panel.TFrame")
-        btn_row.grid(row=15, column=0, sticky="ew", pady=(4, 0))
+        btn_row.grid(row=14, column=0, sticky="ew", pady=(4, 0))
         btn_row.columnconfigure((0, 1), weight=1)
         ttk.Button(btn_row, text="Hint", style="Panel.TButton", command=self._show_hint).grid(row=0, column=0, sticky="ew", padx=3)
         ttk.Button(btn_row, text="Undo Move", style="Panel.TButton", command=self._undo_move).grid(row=0, column=1, sticky="ew", padx=3)
 
         records = ttk.Frame(info, style="Panel.TFrame")
-        records.grid(row=16, column=0, sticky="ew", pady=(6, 2))
+        records.grid(row=15, column=0, sticky="ew", pady=(6, 2))
         records.columnconfigure((0, 1), weight=1)
         ttk.Button(records, text="View history", style="Panel.TButton", command=self._view_history_popup).grid(row=0, column=0, sticky="ew", padx=2, pady=2)
         ttk.Button(records, text="Save history", style="Panel.TButton", command=self._save_history_now).grid(row=0, column=1, sticky="ew", padx=2, pady=2)
