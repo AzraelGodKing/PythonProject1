@@ -565,7 +565,6 @@ class TicTacToeGUI:
             self.status_label.configure(font=self._font("title"))
             self.score_label.configure(font=self._font("text"))
             self.history_label.configure(font=self._font("text"))
-            self.log_label.configure(font=self._font("text"))
             self.match_label.configure(font=self._font("text"))
         self._save_settings()
 
@@ -575,7 +574,6 @@ class TicTacToeGUI:
             self.status_label.configure(wraplength=wrap)
             self.score_label.configure(wraplength=wrap)
             self.history_label.configure(wraplength=wrap)
-            self.log_label.configure(wraplength=wrap)
             self.match_label.configure(wraplength=wrap)
 
     def _handle_exception(self, exc_type, exc_value, exc_traceback) -> None:
@@ -812,10 +810,7 @@ class TicTacToeGUI:
         self.history_label = ttk.Label(info, textvariable=self.history_var, style="App.TLabel", font=self._font("text"), wraplength=260, justify="left")
         self.history_label.grid(row=11, column=0, sticky="w", pady=(2, 6))
 
-        self.log_label = ttk.Label(info, textvariable=self.log_path_var, style="Muted.TLabel", font=self._font("text"), wraplength=260, justify="left")
-        self.log_label.grid(row=12, column=0, sticky="w", pady=(4, 8))
-
-        ttk.Label(info, text="Shortcuts", style="Title.TLabel").grid(row=13, column=0, sticky="w")
+        ttk.Label(info, text="Shortcuts", style="Title.TLabel").grid(row=12, column=0, sticky="w")
         ttk.Label(
             info,
             text="Moves: 1-9  |  New: N/Ctrl+N",
@@ -823,16 +818,16 @@ class TicTacToeGUI:
             font=self._font("text"),
             wraplength=260,
             justify="left",
-        ).grid(row=14, column=0, sticky="w", pady=(2, 8))
+        ).grid(row=13, column=0, sticky="w", pady=(2, 8))
 
         btn_row = ttk.Frame(info, style="Panel.TFrame")
-        btn_row.grid(row=15, column=0, sticky="ew", pady=(4, 0))
+        btn_row.grid(row=14, column=0, sticky="ew", pady=(4, 0))
         btn_row.columnconfigure((0, 1), weight=1)
         ttk.Button(btn_row, text="Hint", style="Panel.TButton", command=self._show_hint).grid(row=0, column=0, sticky="ew", padx=3)
         ttk.Button(btn_row, text="Undo Move", style="Panel.TButton", command=self._undo_move).grid(row=0, column=1, sticky="ew", padx=3)
 
         records = ttk.Frame(info, style="Panel.TFrame")
-        records.grid(row=16, column=0, sticky="ew", pady=(6, 2))
+        records.grid(row=15, column=0, sticky="ew", pady=(6, 2))
         records.columnconfigure((0, 1), weight=1)
         ttk.Button(records, text="View history", style="Panel.TButton", command=self._view_history_popup).grid(row=0, column=0, sticky="ew", padx=2, pady=2)
         ttk.Button(records, text="Save history", style="Panel.TButton", command=self._save_history_now).grid(row=0, column=1, sticky="ew", padx=2, pady=2)
