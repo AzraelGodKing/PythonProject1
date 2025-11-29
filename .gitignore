@@ -16,3 +16,4 @@ tests/__pycache__/
 !data/
 !data/logs/
 !data/logs/.gitkeep
+!pyproject.toml
