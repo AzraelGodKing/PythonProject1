@@ -14,6 +14,11 @@
   "menu.welcome_overlay": "Superposición de bienvenida",
 
   "status.choose": "Elige dificultad y empieza la partida.",
+  "status.your_turn": "Tu turno.",
+  "status.ai_thinking": "La IA está pensando...",
+  "status.ai_paused": "IA en pausa. Reanuda para continuar.",
+  "status.ai_resuming": "IA reanudando...",
+  "status.prefix": "",
 
   "options.language": "Idioma",
 
@@ -58,5 +63,15 @@
   "score.recent": "Recientes",
   "score.recent_none": "ninguno",
   "shortcuts.moves": "Movimientos",
-  "shortcuts.new": "Nueva"
+  "shortcuts.new": "Nueva",
+
+  "difficulty.easy": "Fácil",
+  "difficulty.normal": "Normal",
+  "difficulty.hard": "Difícil",
+
+  "personality.balanced": "Equilibrada",
+  "personality.defensive": "Defensiva",
+  "personality.aggressive": "Agresiva",
+  "personality.misdirection": "Despiste",
+  "personality.mirror": "Espejo"
 }

@@ -14,6 +14,11 @@
   "menu.welcome_overlay": "Welcome Overlay",
 
   "status.choose": "Choose a difficulty and start a game.",
+  "status.your_turn": "Your turn.",
+  "status.ai_thinking": "AI is thinking...",
+  "status.ai_paused": "AI paused. Resume to continue.",
+  "status.ai_resuming": "AI resuming...",
+  "status.prefix": "",
 
   "options.language": "Language",
 
@@ -44,6 +49,16 @@
   "button.ai_mode": "AI vs AI Mode",
   "button.options": "Options",
 
+  "difficulty.easy": "Easy",
+  "difficulty.normal": "Normal",
+  "difficulty.hard": "Hard",
+
+  "personality.balanced": "Balanced",
+  "personality.defensive": "Defensive",
+  "personality.aggressive": "Aggressive",
+  "personality.misdirection": "Misdirection",
+  "personality.mirror": "Mirror"
+
   "crash.title": "Crash Report",
   "crash.empty": "No crash trace found.",
   "crash.tip": "Review the log below; no data leaves your machine.",
@@ -56,7 +71,7 @@
   "score.round": "Round",
   "score.badges": "Badges",
   "score.recent": "Recent",
-  "score.recent_none": "none"
-  ,"shortcuts.moves": "Moves",
+  "score.recent_none": "none",
+  "shortcuts.moves": "Moves",
   "shortcuts.new": "New"
 }

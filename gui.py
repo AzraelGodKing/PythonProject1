@@ -285,6 +285,15 @@ class TicTacToeGUI:
     def _lang_display(self, code: str) -> str:
         return self.language_names.get(code, code)
 
+    def _display_personality(self, key: str) -> str:
+        return self._t(f"personality.{key}", key)
+
+    def _personality_key_from_display(self, label: str) -> str:
+        for key in self.personality_options:
+            if label == self._display_personality(key):
+                return key
+        return label
+
     def _resolve_palette(self, theme: str) -> dict:
         if theme == "high_contrast":
             return dict(PALETTE_HIGH_CONTRAST)
@@ -751,6 +760,11 @@ class TicTacToeGUI:
         self.clean_slate_btn.configure(text=self._t("button.clean_slate", "Clean slate"))
         self.ai_mode_btn.configure(text=self._t("button.ai_mode", "AI vs AI Mode"))
         self.options_btn.configure(text=self._t("button.options", "Options"))
+        self.moves_label.configure(text=self._t("label.moves_log", "Moves"))
+        # update difficulty/personality combobox values
+        self.diff_var.set(self._t(f"difficulty.{self.session.difficulty_key.lower()}", self.session.difficulty_key))
+        self.personality_var.set(self._display_personality(self.session.personality))
+        self.personality_menu.configure(values=[self._display_personality(k) for k in self.personality_options])
 
     def _show_intro_overlay(self, force: bool = False) -> None:
         if not force and not self.show_intro_overlay.get():
@@ -954,12 +968,12 @@ class TicTacToeGUI:
 
         self.diff_label = ttk.Label(top, text=self._t("label.difficulty", "Difficulty:"), style="App.TLabel", font=self._font("title"))
         self.diff_label.grid(row=0, column=0, sticky="w", padx=(0, 4))
-        self.diff_var = tk.StringVar(value="Easy")
+        self.diff_var = tk.StringVar(value=self._t("difficulty.easy", "Easy"))
         diff_menu = ttk.Combobox(
             top,
             textvariable=self.diff_var,
             state="readonly",
-            values=["Easy", "Normal", "Hard"],
+            values=[self._t("difficulty.easy", "Easy"), self._t("difficulty.normal", "Normal"), self._t("difficulty.hard", "Hard")],
             width=10,
             style="App.TCombobox",
         )
@@ -968,12 +982,13 @@ class TicTacToeGUI:
 
         self.personality_label = ttk.Label(top, text=self._t("label.personality", "Personality:"), style="App.TLabel", font=self._font("title"))
         self.personality_label.grid(row=0, column=2, sticky="w", padx=(0, 4))
-        self.personality_var = tk.StringVar(value="balanced")
+        self.personality_options = ["balanced", "defensive", "aggressive", "misdirection", "mirror"]
+        self.personality_var = tk.StringVar(value=self._display_personality("balanced"))
         self.personality_menu = ttk.Combobox(
             top,
             textvariable=self.personality_var,
             state="readonly",
-            values=["balanced", "defensive", "aggressive", "misdirection", "mirror"],
+            values=[self._display_personality(k) for k in self.personality_options],
             width=14,
             style="App.TCombobox",
         )
@@ -1214,10 +1229,20 @@ class TicTacToeGUI:
         self.heatmap_locked = True
     def _apply_selection(self) -> None:
         level = self.diff_var.get()
-        personality = self.personality_var.get() if level == "Normal" else "standard"
+        personality_display = self.personality_var.get()
+        personality = self._personality_key_from_display(personality_display) if level == self._t("difficulty.normal", "Normal") else "standard"
         self.personality_menu.state(["!disabled"] if level == "Normal" else ["disabled"])
-        self.session.set_difficulty(level, personality, use_humanish=self.humanish_normal.get())
-        self.status_var.set(f"Selected {self.session.label()}. Start a game.")
+        # Map localized difficulty back to internal key
+        if level == self._t("difficulty.easy", "Easy"):
+            internal_level = "Easy"
+        elif level == self._t("difficulty.normal", "Normal"):
+            internal_level = "Normal"
+        elif level == self._t("difficulty.hard", "Hard"):
+            internal_level = "Hard"
+        else:
+            internal_level = level
+        self.session.set_difficulty(internal_level, personality, use_humanish=self.humanish_normal.get())
+        self.status_var.set(f"{self._t('status.prefix','')}{self.session.label()}. {self._t('status.choose','Start a game.')}")
         if level != "Normal":
             self.sandbox_btn.configure(state="disabled")
         else:
@@ -1520,7 +1545,7 @@ class TicTacToeGUI:
         if winner == "Draw":
             self.status_var.set("It's a draw. Start a new game.")
         else:
-            self.status_var.set(f"Player {winner} wins! Start a new game.")
+            self.status_var.set(f"{self._t('status.prefix','')}{winner} {self._t('status.your_turn','wins!')}")
         self._set_status_icon("done")
         self.session.record_result(winner)
         elapsed = None
