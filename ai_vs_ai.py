@@ -247,6 +247,11 @@ def parse_args(argv=None) -> argparse.Namespace:
         help="Choose text (default) or json summary output in headless mode.",
     )
     parser.add_argument("--result-file", help="Optional path to write the summary JSON.")
+    parser.add_argument(
+        "--expect-winner",
+        choices=("X", "O", "Draw"),
+        help="Exit non-zero unless the aggregate winner matches (ties become Draw).",
+    )
     return parser.parse_args(argv)
 
 
@@ -275,6 +280,19 @@ def main(argv=None) -> None:
             print("\nFinal scores:")
             for name, val in sorted(summary["scores"].items()):  # type: ignore[index]
                 print(f"- {name}: {val}")
+        if args.expect_winner:
+            scores = summary["scores"]  # type: ignore[index]
+            x_wins = scores.get(args.ai_x, 0)
+            o_wins = scores.get(args.ai_o, 0)
+            if x_wins > o_wins:
+                winner = "X"
+            elif o_wins > x_wins:
+                winner = "O"
+            else:
+                winner = "Draw"
+            if winner != args.expect_winner:
+                print(f"Expected winner {args.expect_winner}, but got {winner}.")
+                raise SystemExit(1)
     else:
         play_ai_vs_ai_session()
 
