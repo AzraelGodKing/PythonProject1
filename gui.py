@@ -951,7 +951,8 @@ class TicTacToeGUI:
         records.columnconfigure((0, 1), weight=1)
         ttk.Button(records, text="View history", style="Panel.TButton", command=self._view_history_popup).grid(row=0, column=0, sticky="ew", padx=2, pady=2)
         ttk.Button(records, text="Achievements", style="Panel.TButton", command=self._show_achievements_popup).grid(row=0, column=1, sticky="ew", padx=2, pady=2)
-        ttk.Button(records, text="AI vs AI Mode", style="Panel.TButton", command=self._show_ai_vs_ai_popup).grid(row=1, column=0, columnspan=2, sticky="ew", padx=2, pady=(2, 2))
+        ttk.Button(records, text="Clean slate", style="Panel.TButton", command=self._clean_slate).grid(row=1, column=0, sticky="ew", padx=2, pady=(2, 2))
+        ttk.Button(records, text="AI vs AI Mode", style="Panel.TButton", command=self._show_ai_vs_ai_popup).grid(row=1, column=1, sticky="ew", padx=2, pady=(2, 2))
         ttk.Button(records, text="Options", style="Panel.TButton", command=self._show_options_popup).grid(row=2, column=0, columnspan=2, sticky="ew", padx=2, pady=(2, 0))
 
     def _on_diff_change(self, _event=None) -> None:
@@ -1038,6 +1039,14 @@ class TicTacToeGUI:
             game.save_match_scoreboard(self.match_scoreboard)
             self._refresh_scoreboard()
             self.status_var.set("Scoreboard reset.")
+
+    def _clean_slate(self) -> None:
+        if messagebox.askyesno("Clean slate", "Reset badges and clear history? Scoreboard will remain."):
+            game.reset_badges_and_history()
+            self.badges = game.load_badges()
+            self.session.history = []
+            self._refresh_scoreboard()
+            self.status_var.set("Badges and history reset.")
     def _clean_slate(self) -> None:
         if messagebox.askyesno("Clean slate", "Reset badges and clear history? Scoreboard will remain."):
             game.reset_badges_and_history()
@@ -1299,6 +1308,7 @@ class TicTacToeGUI:
             except Exception:
                 elapsed = None
         self._update_match_progress(winner)
+        self._highlight_winning_line(winner)
         self._refresh_scoreboard()
         self._refresh_move_log()
         self.last_move_idx = None
@@ -1322,6 +1332,27 @@ class TicTacToeGUI:
         original = btn.cget("bg")
         btn.configure(bg=self._color("ACCENT"), fg=self._color("BG"), relief="solid")
         self.root.after(220, lambda: btn.configure(bg=original, fg=self._color("O"), relief="raised"))
+
+    def _highlight_winning_line(self, winner: str) -> None:
+        if winner == "Draw":
+            return
+        lines = [
+            (0, 1, 2),
+            (3, 4, 5),
+            (6, 7, 8),
+            (0, 3, 6),
+            (1, 4, 7),
+            (2, 5, 8),
+            (0, 4, 8),
+            (2, 4, 6),
+        ]
+        for a, b, c in lines:
+            if self.session.board[a] == self.session.board[b] == self.session.board[c] == winner:
+                for idx in (a, b, c):
+                    r, col = divmod(idx, 3)
+                    btn = self.buttons[r][col]
+                    btn.configure(bg=self._color("BTN"), fg=self._color("BG"))
+                break
 
     def _undo_move(self) -> None:
         if self.session.game_over:
