@@ -566,9 +566,7 @@ class TicTacToeGUI:
         view_menu.add_command(label=self._t("button.ai_mode", "AI vs AI Mode"), command=self._show_ai_vs_ai_popup)
         menubar.add_cascade(label=self._t("menu.view", "View"), menu=view_menu)
 
-        options_menu = tk.Menu(menubar, tearoff=0)
-        options_menu.add_command(label=self._t("menu.options", "Options"), command=self._show_options_popup)
-        menubar.add_cascade(label=self._t("menu.options", "Options"), menu=options_menu)
+        menubar.add_command(label=self._t("menu.options", "Options"), command=self._show_options_popup)
 
         self.root.config(menu=menubar)
 
