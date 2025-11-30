@@ -10,6 +10,7 @@
 !ai_vs_ai.py
 !README.md
 !pyproject.toml
+!CHANGELOG.md
 
 !tictactoe/
 !tictactoe/**
