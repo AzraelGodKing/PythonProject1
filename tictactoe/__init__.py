@@ -4,6 +4,8 @@ import argparse
 import json
 import os
 import random
+import sys
+import time
 from datetime import datetime
 from typing import Callable, Dict, List, Optional, Tuple
 from . import scoreboard
@@ -20,6 +22,7 @@ SAFE_MODE_MESSAGE = scoreboard.SAFE_MODE_MESSAGE
 DEFAULT_MATCH_LENGTH = 3
 DIFFICULTIES = scoreboard.DIFFICULTIES
 DEFAULT_SCORE = scoreboard.DEFAULT_SCORE
+DEFAULT_ERROR_RATE = 0.15
 HistoryEntry = Tuple[str, str, str, float]
 _MINIMAX_CACHE: Dict[Tuple[str, bool], int] = {}
 MINIMAX_CACHE_LIMIT = 2048
@@ -139,6 +142,49 @@ def play_replay(file_path: str) -> None:
             print("Board full: draw.")
             break
     print("Replay complete.")
+
+
+def run_hard_batch(rounds: int) -> int:
+    """Run headless Hard vs Hard to ensure no losses."""
+    failures = 0
+    for _ in range(rounds):
+        board = [" "] * 9
+        current = "X"
+        while True:
+            idx = ai_move_hard(board)
+            board[idx] = current
+            winner = check_winner(board)
+            if winner:
+                if winner != "Draw":
+                    failures += 1
+                break
+            if board_full(board):
+                break
+            current = "O" if current == "X" else "X"
+    return failures
+
+
+def run_perf_dashboard() -> None:
+    print("Performance dashboard (minimax)")
+    start = time.perf_counter()
+    for _ in range(200):
+        ai_move_hard([" "] * 9)
+    elapsed_empty = time.perf_counter() - start
+    print(f"- 200 empty-board Hard moves: {elapsed_empty:.3f}s")
+    import random
+
+    boards = []
+    for _ in range(200):
+        b = [" "] * 9
+        filled = random.sample(range(9), k=random.randint(0, 6))
+        for idx in filled:
+            b[idx] = random.choice(["X", "O"])
+        boards.append(b)
+    start = time.perf_counter()
+    for b in boards:
+        ai_move_hard(b[:])
+    elapsed_mixed = time.perf_counter() - start
+    print(f"- 200 mixed-board Hard moves: {elapsed_mixed:.3f}s")
 
 
 def update_badges_for_diff(
@@ -542,6 +588,15 @@ def ai_move_easy(board: List[str]) -> int:
     return random.choice(open_spots)
 
 
+def ai_move_normal_humanish(board: List[str], error_rate: float = 0.15) -> int:
+    """Normal AI with occasional suboptimal move to mimic human mistakes."""
+    if random.random() < error_rate:
+        open_spots = [idx for idx, cell in enumerate(board) if cell == " "]
+        if open_spots:
+            return random.choice(open_spots)
+    return ai_move_normal(board)
+
+
 def ai_move_normal(board: List[str]) -> int:
     """Normal AI: win if possible, block if needed, else take center/corner/first free."""
     win_idx = find_winning_move(board, "O")
@@ -884,7 +939,7 @@ def print_match_score(match_wins: Dict[str, int], target: int) -> None:
     print(f"Match score (target {target} wins): X={match_wins['X']}  O={match_wins['O']}  Draws={match_wins['Draw']}")
 
 
-def choose_difficulty(preferred: Optional[str] = None, personality: Optional[str] = None) -> Tuple[str, Callable[[List[str]], int], str]:
+def choose_difficulty(preferred: Optional[str] = None, personality: Optional[str] = None, error_rate: float = DEFAULT_ERROR_RATE) -> Tuple[str, Callable[[List[str]], int], str]:
     options = {
         "1": "Easy",
         "easy": "Easy",
@@ -901,6 +956,8 @@ def choose_difficulty(preferred: Optional[str] = None, personality: Optional[str
             personality = personality or "balanced"
             if personality not in NORMAL_PERSONALITIES:
                 personality = "balanced"
+            if error_rate > 0:
+                return normalized, lambda board: ai_move_normal_humanish(board, error_rate), personality
             return normalized, NORMAL_PERSONALITIES[personality], personality
         if normalized == "Hard":
             return normalized, ai_move_hard, "standard"
@@ -1000,6 +1057,7 @@ def play_session(
     summary: Optional[Dict[str, object]] = None,
     history_limit: int = 100,
     moves_log: Optional[List[Tuple[str, int]]] = None,
+    error_rate: float = DEFAULT_ERROR_RATE,
 ) -> Dict[str, Dict[str, int]]:
     _MINIMAX_CACHE.clear()
     session_history: List[HistoryEntry] = load_session_history_from_file(limit=history_limit)
@@ -1007,7 +1065,7 @@ def play_session(
     match_scoreboard = load_match_scoreboard()
     badges = load_badges()
 
-    diff_key, ai_move_fn, personality = choose_difficulty(diff_key_override, personality_override)
+    diff_key, ai_move_fn, personality = choose_difficulty(diff_key_override, personality_override, error_rate)
     difficulty_label = difficulty_display_label(diff_key, personality)
     print(f"Starting game on {difficulty_label}.")
     match_length = choose_match_length(match_length_override)
@@ -1242,6 +1300,9 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     )
     parser.add_argument("--save-replay", help="Write the auto-started game replay to this JSON file.")
     parser.add_argument("--replay-file", help="Play back a saved replay JSON and exit.")
+    parser.add_argument("--ai-error-rate", type=float, default=DEFAULT_ERROR_RATE, help="Chance (0-1) for Normal AI to make a random move.")
+    parser.add_argument("--batch-hard", type=int, default=0, help="Run N hard-mode self-tests to ensure no losses (headless).")
+    parser.add_argument("--perf", action="store_true", help="Run a quick performance dashboard (minimax benchmarks).")
     return parser.parse_args(argv)
 
 
@@ -1263,6 +1324,18 @@ def main(argv: Optional[List[str]] = None) -> None:
                 os.remove(HISTORY_FILE)
         except OSError:
             pass
+
+    if args.batch_hard and args.batch_hard > 0:
+        failures = run_hard_batch(args.batch_hard)
+        if failures:
+            print(f"Hard batch failures: {failures}")
+            raise SystemExit(1)
+        print(f"Hard batch ({args.batch_hard}) passed with no losses.")
+        return
+
+    if args.perf:
+        run_perf_dashboard()
+        return
 
     scoreboard_obj = load_scoreboard()
     if args.preset and not args.difficulty:
@@ -1289,6 +1362,7 @@ def main(argv: Optional[List[str]] = None) -> None:
             summary=summary,
             history_limit=max(1, args.history_limit),
             moves_log=[],
+            error_rate=max(0.0, args.ai_error_rate),
         )
         expected = args.expect_winner
         if expected:

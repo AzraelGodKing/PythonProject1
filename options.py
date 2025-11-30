@@ -32,6 +32,7 @@ def show_options_popup(gui) -> None:
         ("Show board coordinates", gui.show_coords, gui._toggle_show_coords),
         ("Show AI heatmap", gui.show_heatmap, gui._toggle_heatmap),
         ("Show welcome overlay at launch", gui.show_intro_overlay, gui._save_settings),
+        ("Human-like Normal AI (occasional mistakes)", gui.humanish_normal, gui._save_settings),
         ("AI commentary", gui.show_commentary, gui._save_settings),
     ]:
         ttk.Checkbutton(frame, text=text, variable=var, style="App.TCheckbutton", command=cmd).grid(row=row, column=0, columnspan=2, sticky="w", pady=2)
