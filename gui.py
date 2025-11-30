@@ -294,6 +294,15 @@ class TicTacToeGUI:
                 return key
         return label
 
+    def _display_difficulty_label(self, diff: str) -> str:
+        return self._t(f"difficulty.{diff.lower()}", diff)
+
+    def _session_label_localized(self) -> str:
+        diff_label = self._display_difficulty_label(self.session.difficulty_key)
+        if self.session.difficulty_key == "Normal":
+            return f"{diff_label} ({self._display_personality(self.session.personality)})"
+        return diff_label
+
     def _resolve_palette(self, theme: str) -> dict:
         if theme == "high_contrast":
             return dict(PALETTE_HIGH_CONTRAST)
@@ -1316,14 +1325,16 @@ class TicTacToeGUI:
         lines = []
         for diff in game.DIFFICULTIES:
             entry = sb.get(diff, game.DEFAULT_SCORE)
-            lines.append(f"{diff}: X={entry['X']}  O={entry['O']}  D={entry['Draw']}")
+            label = self._display_difficulty_label(diff)
+            lines.append(f"{label}: X={entry['X']}  O={entry['O']}  {self._t('score.draws','Draws')}={entry['Draw']}")
         self.score_var.set("\n".join(lines))
 
         msb = getattr(self, "match_scoreboard", {})
         match_lines = []
         for diff in game.DIFFICULTIES:
             entry = msb.get(diff, game.DEFAULT_SCORE)
-            match_lines.append(f"{diff}: X={entry['X']}  O={entry['O']}  D={entry['Draw']}")
+            label = self._display_difficulty_label(diff)
+            match_lines.append(f"{label}: X={entry['X']}  O={entry['O']}  {self._t('score.draws','Draws')}={entry['Draw']}")
         self.match_score_var.set("\n".join(match_lines) if match_lines else "No matches yet.")
         badge_lines = []
         for diff, info in self.badges.items():
@@ -1335,7 +1346,7 @@ class TicTacToeGUI:
             if fw:
                 parts.append(f"fastest {fw:.1f}s")
             if parts:
-                badge_lines.append(f"{diff}: " + ", ".join(parts))
+                badge_lines.append(f"{self._display_difficulty_label(diff)}: " + ", ".join(parts))
         self.badge_var.set("Badges: " + " | ".join(badge_lines) if badge_lines else "Badges: none yet")
         if self.session.history:
             recent = self.session.history[-3:]
@@ -1369,7 +1380,7 @@ class TicTacToeGUI:
         self._refresh_board()
         self._refresh_move_log()
         self.session.game_over = False
-        self.status_var.set(f"{self.session.label()}: Your turn.")
+        self.status_var.set(f"{self._session_label_localized()}: {self._t('status.your_turn','Your turn.')}")
         self._set_status_icon("player")
         self._refresh_scoreboard()
         self.match_var.set(self._match_score_text())
@@ -1416,12 +1427,12 @@ class TicTacToeGUI:
             self._finish_round(winner or "Draw")
             return
 
-        self.status_var.set("AI is thinking...")
+        self.status_var.set(self._t("status.ai_thinking", "AI is thinking..."))
         self._set_status_icon("ai")
         self.player_turn = False
         if getattr(self, "ai_paused_main", False):
             self.ai_waiting = True
-            self.status_var.set("AI paused. Resume to continue.")
+            self.status_var.set(self._t("status.ai_paused", "AI paused. Resume to continue."))
         else:
             self.pending_ai_id = self.root.after(250, self._ai_move)
 
@@ -1430,7 +1441,7 @@ class TicTacToeGUI:
             return
         if getattr(self, "ai_paused_main", False):
             self.ai_waiting = True
-            self.status_var.set("AI paused. Resume to continue.")
+            self.status_var.set(self._t("status.ai_paused", "AI paused. Resume to continue."))
             return
         ai_idx = self.session.ai_move_fn(self.session.board)
         self.session.board[ai_idx] = "O"
@@ -1446,7 +1457,7 @@ class TicTacToeGUI:
         if winner or game.board_full(self.session.board):
             self._finish_round(winner or "Draw")
             return
-        self.status_var.set("Your turn.")
+        self.status_var.set(self._t("status.your_turn", "Your turn."))
         self._set_status_icon("player")
         self.player_turn = True
         if self.show_heatmap.get():
@@ -1473,9 +1484,9 @@ class TicTacToeGUI:
             self.match_over = True
             self.player_turn = False
             if self.match_winner == "Draw":
-                self.status_var.set("Match over: draw. Start a new match.")
+                self.status_var.set(self._t("status.match_draw", "Match over: draw. Start a new match."))
             else:
-                self.status_var.set(f"Match over! {self.match_winner} wins the match.")
+                self.status_var.set(self._t("status.match_winner", "Match over!").replace("{winner}", self.match_winner))
             self._set_status_icon("done")
             # persist match result per difficulty (skip Bo1)
             if self.match_target > 1:
@@ -1545,7 +1556,7 @@ class TicTacToeGUI:
         if winner == "Draw":
             self.status_var.set("It's a draw. Start a new game.")
         else:
-            self.status_var.set(f"{self._t('status.prefix','')}{winner} {self._t('status.your_turn','wins!')}")
+            self.status_var.set(self._t("status.match_end", "{winner} wins! Start a new game.").replace("{winner}", self._session_label_localized()))
         self._set_status_icon("done")
         self.session.record_result(winner)
         elapsed = None
