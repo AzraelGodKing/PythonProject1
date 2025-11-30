@@ -78,6 +78,7 @@ def save_badges(badges: Dict[str, Dict[str, float]], file_path: str = BANNER_FIL
             json.dump(badges, f)
     except OSError:
         pass
+    return None
 
 
 def run_doctor() -> None:
@@ -157,6 +158,16 @@ def update_badges_for_diff(
             entry["fastest_win"] = fastest_win
             updated["fastest"] = True
     return updated
+
+
+def reset_badges_and_history() -> None:
+    """Clean slate: reset badges file and clear session history; leave scoreboard intact."""
+    save_badges({})
+    try:
+        if os.path.exists(HISTORY_FILE):
+            os.remove(HISTORY_FILE)
+    except OSError:
+        pass
 
 
 def print_board(board: List[str]) -> None:
