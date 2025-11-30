@@ -541,12 +541,21 @@ class TicTacToeGUI:
         menubar.add_cascade(label=self._t("menu.game", "Game"), menu=game_menu)
 
         view_menu = tk.Menu(menubar, tearoff=0)
-        view_menu.add_command(label=self._t("menu.achievements", "Achievements"), command=self._show_achievements_popup)
-        view_menu.add_command(label=self._t("menu.history", "History"), command=self._view_history_popup)
-        view_menu.add_command(label=self._t("menu.welcome_overlay", "Welcome Overlay"), command=lambda: self._show_intro_overlay(force=True))
-        view_menu.add_command(label=self._t("menu.whats_new", "What's New"), command=self._show_whats_new_popup)
-        view_menu.add_command(label=self._t("menu.change_log", "Change Log"), command=self._show_change_log_popup)
-        view_menu.add_command(label=self._t("menu.crash_report", "Crash Report"), command=self._show_crash_report)
+        # Grouped and sorted for clarity.
+        for label, cmd in [
+            (self._t("menu.achievements", "Achievements"), self._show_achievements_popup),
+            (self._t("menu.history", "History"), self._view_history_popup),
+            (self._t("menu.welcome_overlay", "Welcome Overlay"), lambda: self._show_intro_overlay(force=True)),
+        ]:
+            view_menu.add_command(label=label, command=cmd)
+        view_menu.add_separator()
+        for label, cmd in [
+            (self._t("menu.whats_new", "What's New"), self._show_whats_new_popup),
+            (self._t("menu.change_log", "Change Log"), self._show_change_log_popup),
+            (self._t("menu.crash_report", "Crash Report"), self._show_crash_report),
+        ]:
+            view_menu.add_command(label=label, command=cmd)
+        view_menu.add_separator()
         view_menu.add_command(label=self._t("menu.options", "Options"), command=self._show_options_popup)
         menubar.add_cascade(label=self._t("menu.view", "View"), menu=view_menu)
 
