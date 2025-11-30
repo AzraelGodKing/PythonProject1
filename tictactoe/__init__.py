@@ -870,9 +870,10 @@ def play_session(
     match_length_override: Optional[int] = None,
     non_interactive: bool = False,
     summary: Optional[Dict[str, object]] = None,
+    history_limit: int = 100,
 ) -> Dict[str, Dict[str, int]]:
     _MINIMAX_CACHE.clear()
-    session_history: List[HistoryEntry] = load_session_history_from_file()
+    session_history: List[HistoryEntry] = load_session_history_from_file(limit=history_limit)
     stats = _new_stats()
     match_scoreboard = load_match_scoreboard()
 
@@ -1075,6 +1076,17 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         choices=("X", "O", "Draw"),
         help="If set, exit non-zero unless the match winner (or last result) matches.",
     )
+    parser.add_argument(
+        "--history-limit",
+        type=int,
+        default=100,
+        help="Maximum history entries to load for the session (default 100).",
+    )
+    parser.add_argument(
+        "--truncate-history",
+        action="store_true",
+        help="Remove existing history file before starting (saves clean logs).",
+    )
     return parser.parse_args(argv)
 
 
@@ -1084,6 +1096,12 @@ def main(argv: Optional[List[str]] = None) -> None:
         set_safe_mode(args.safe_mode)
     if args.history_file:
         configure_history_file(args.history_file)
+    if args.truncate_history:
+        try:
+            if os.path.exists(HISTORY_FILE):
+                os.remove(HISTORY_FILE)
+        except OSError:
+            pass
 
     scoreboard_obj = load_scoreboard()
     auto_start = args.start or args.difficulty or args.personality or args.best_of
@@ -1096,6 +1114,7 @@ def main(argv: Optional[List[str]] = None) -> None:
             match_length_override=args.best_of,
             non_interactive=args.non_interactive,
             summary=summary,
+            history_limit=max(1, args.history_limit),
         )
         expected = args.expect_winner
         if expected:
