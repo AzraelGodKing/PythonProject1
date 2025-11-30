@@ -404,7 +404,7 @@ def save_session_history_to_file(history: List[HistoryEntry], file_path: Optiona
         print("No session history to save.")
         return file_path
     if rotate:
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        ts = datetime.now().strftime("%Y%m%d")
         base, ext = os.path.splitext(file_path)
         file_path = f"{base}_{ts}{ext or '.log'}"
     dir_name = os.path.dirname(file_path) or "."
