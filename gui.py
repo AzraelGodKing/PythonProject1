@@ -12,6 +12,7 @@ import atexit
 import math
 from typing import Optional
 from tkinter import messagebox, ttk
+import argparse
 import options
 import ai_vs_ai
 import tictactoe as game
@@ -170,6 +171,7 @@ class TicTacToeGUI:
         self.show_heatmap = tk.BooleanVar(value=settings.get("show_heatmap", False))
         self.show_commentary = tk.BooleanVar(value=settings.get("show_commentary", False))
         self.show_intro_overlay = tk.BooleanVar(value=settings.get("show_intro_overlay", True))
+        self.ai_waiting = False
         self.palette = self._resolve_palette(self.theme_var.get())
         self.fonts = dict(FONTS_LARGE if self.large_fonts.get() else FONTS_DEFAULT)
         self._configure_style()
@@ -188,6 +190,7 @@ class TicTacToeGUI:
         self.intro_popup: Optional[tk.Toplevel] = None
         self.ai_running = False
         self.ai_paused = False
+        self.ai_paused_main = False
         self.achievements_filter_earned = tk.BooleanVar(value=False)
         self.compact_sidebar = tk.BooleanVar(value=settings.get("compact_sidebar", False))
         self.match_winner = ""
@@ -207,6 +210,7 @@ class TicTacToeGUI:
         self.pending_ai_id: Optional[str] = None
         self.last_move_idx: Optional[int] = None
         self.hint_highlight: Optional[int] = None
+        self.rematch_button: Optional[ttk.Button] = None
 
         self._build_layout()
         self._refresh_scoreboard()
@@ -704,6 +708,28 @@ class TicTacToeGUI:
         self._save_settings()
         self._apply_compact_layout()
 
+    def _toggle_ai_pause_main(self) -> None:
+        self.ai_paused_main = not getattr(self, "ai_paused_main", False)
+        if self.ai_paused_main:
+            if hasattr(self, "pause_ai_btn"):
+                self.pause_ai_btn.configure(text="Resume AI")
+            if self.pending_ai_id:
+                try:
+                    self.root.after_cancel(self.pending_ai_id)
+                except Exception:
+                    pass
+                self.pending_ai_id = None
+                self.ai_waiting = True
+            self.status_var.set("AI paused. Resume to continue.")
+        else:
+            if hasattr(self, "pause_ai_btn"):
+                self.pause_ai_btn.configure(text="Pause AI")
+            if getattr(self, "ai_waiting", False) and not self.session.game_over and not getattr(self, "match_over", False):
+                self.ai_waiting = False
+                self.status_var.set("AI resuming...")
+                self._set_status_icon("ai")
+                self.pending_ai_id = self.root.after(50, self._ai_move)
+
     def _set_status_icon(self, mode: str) -> None:
         if not hasattr(self, "status_icon"):
             return
@@ -773,6 +799,10 @@ class TicTacToeGUI:
         self.start_btn.grid(row=0, column=0, padx=(0, 4))
         self.reset_btn = ttk.Button(btn_bar, text="Reset Scoreboard", command=self._reset_scoreboard, style="Panel.TButton")
         self.reset_btn.grid(row=0, column=1, padx=(4, 0))
+        self.rematch_button = ttk.Button(btn_bar, text="Rematch", command=self._rematch_same_settings, style="Panel.TButton")
+        self.rematch_button.grid(row=0, column=2, padx=(4, 0))
+        self.pause_ai_btn = ttk.Button(btn_bar, text="Pause AI", command=self._toggle_ai_pause_main, style="Panel.TButton")
+        self.pause_ai_btn.grid(row=0, column=3, padx=(4, 0))
 
         match_row = ttk.Frame(top, style="App.TFrame")
         match_row.grid(row=1, column=0, columnspan=6, sticky="ew", pady=(6, 0))
@@ -1082,6 +1112,10 @@ class TicTacToeGUI:
             self.heatmap_locked = False
             self._refresh_heatmap()
 
+    def _rematch_same_settings(self) -> None:
+        # Start a fresh match using current settings and match length.
+        self._new_match()
+
     def _handle_player_move(self, idx: int) -> None:
         if self.session.game_over or self.session.board[idx] != " " or not getattr(self, "player_turn", True) or getattr(self, "match_over", False):
             return
@@ -1109,10 +1143,18 @@ class TicTacToeGUI:
         self.status_var.set("AI is thinking...")
         self._set_status_icon("ai")
         self.player_turn = False
-        self.pending_ai_id = self.root.after(250, self._ai_move)
+        if getattr(self, "ai_paused_main", False):
+            self.ai_waiting = True
+            self.status_var.set("AI paused. Resume to continue.")
+        else:
+            self.pending_ai_id = self.root.after(250, self._ai_move)
 
     def _ai_move(self) -> None:
         if self.session.game_over:
+            return
+        if getattr(self, "ai_paused_main", False):
+            self.ai_waiting = True
+            self.status_var.set("AI paused. Resume to continue.")
             return
         ai_idx = self.session.ai_move_fn(self.session.board)
         self.session.board[ai_idx] = "O"
@@ -1659,9 +1701,21 @@ class TicTacToeGUI:
 
 
 
-def main() -> None:
+def _parse_args(argv=None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Tkinter GUI for Tic-Tac-Toe")
+    parser.add_argument("--headless", action="store_true", help="Start GUI in withdrawn mode (no visible window).")
+    return parser.parse_args(argv)
+
+
+def main(argv=None) -> None:
+    args = _parse_args(argv)
     root = tk.Tk()
+    if args.headless:
+        root.withdraw()
     app = TicTacToeGUI(root)
+    if args.headless:
+        app.animations_enabled.set(False)
+        app.sound_enabled.set(False)
     app.start_new_game()
     root.mainloop()
 
