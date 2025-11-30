@@ -53,7 +53,10 @@
   "score.o_wins": "O wins",
   "score.draws": "Draws",
   "score.match_prefix": "Match",
+  "score.round": "Round",
   "score.badges": "Badges",
   "score.recent": "Recent",
   "score.recent_none": "none"
+  ,"shortcuts.moves": "Moves",
+  "shortcuts.new": "New"
 }

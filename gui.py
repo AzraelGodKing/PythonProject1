@@ -1114,7 +1114,7 @@ class TicTacToeGUI:
         self.shortcuts_title.grid(row=12, column=0, sticky="w")
         ttk.Label(
             info,
-            text="Moves: 1-9  |  New: N/Ctrl+N",
+            text=f"{self._t('shortcuts.moves','Moves')}: 1-9  |  {self._t('shortcuts.new','New')}: N/Ctrl+N",
             style="Muted.TLabel",
             font=self._font("text"),
             wraplength=260,
@@ -1471,7 +1471,7 @@ class TicTacToeGUI:
         d_total = sum(sb.get(diff, {}).get("Draw", 0) for diff in game.DIFFICULTIES)
         games = x_total + o_total + d_total
         match_line = (
-            f"{self._t('score.match_prefix','Match')}: Bo{self.match_length}, Round {self.match_rounds + (0 if self.match_over else 1)}/{self.match_length} "
+            f"{self._t('score.match_prefix','Match')}: Bo{self.match_length}, {self._t('score.round','Round')} {self.match_rounds + (0 if self.match_over else 1)}/{self.match_length} "
             f"| X={self.match_wins['X']} O={self.match_wins['O']} {self._t('score.draws','Draws')}={self.match_wins['Draw']}"
         )
         self.quick_stats_var.set(

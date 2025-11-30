@@ -53,7 +53,10 @@
   "score.o_wins": "Victorias O",
   "score.draws": "Empates",
   "score.match_prefix": "Partida",
+  "score.round": "Ronda",
   "score.badges": "Insignias",
   "score.recent": "Recientes",
-  "score.recent_none": "ninguno"
+  "score.recent_none": "ninguno",
+  "shortcuts.moves": "Movimientos",
+  "shortcuts.new": "Nueva"
 }
