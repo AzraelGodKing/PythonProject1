@@ -7,8 +7,6 @@ v0.7
 - Human-like Normal default
 - Clean slate reset for badges/history
 - What's New / Change Log in View
-
-v0.8
 - Bug fixes
 
 v0.6
