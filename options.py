@@ -26,7 +26,6 @@ def show_options_popup(gui) -> None:
     for text, var, cmd in [
         ("Require confirmations", gui.confirm_moves, gui._toggle_confirm),
         ("Auto-start next game", gui.auto_start, gui._toggle_auto_start),
-        ("Rotate history filenames", gui.rotate_logs, gui._toggle_rotate_logs),
         ("Larger fonts", gui.large_fonts, gui._toggle_font_size),
         ("Animations", gui.animations_enabled, gui._toggle_animations),
         ("Sound cues", gui.sound_enabled, gui._toggle_sound),

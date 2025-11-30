@@ -11,6 +11,7 @@ import tkinter as tk
 import atexit
 import math
 import time
+from datetime import datetime
 from typing import Optional
 from tkinter import messagebox, ttk
 import argparse
@@ -20,6 +21,7 @@ import tictactoe as game
 
 
 LOG_DIR = os.path.join("data", "logs")
+USER_EVENT_LOG = os.path.join(LOG_DIR, "user.log")
 SETTINGS_FILE = "gui_settings.json"
 SETTINGS_BACKUP = os.path.join(LOG_DIR, "gui_settings.json.bak")
 
@@ -318,6 +320,15 @@ class TicTacToeGUI:
             except Exception:
                 pass
 
+    def _log_user_event(self, message: str) -> None:
+        try:
+            os.makedirs(LOG_DIR, exist_ok=True)
+            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            with open(USER_EVENT_LOG, "a", encoding="utf-8") as f:
+                f.write(f"{ts} - {message}\n")
+        except OSError:
+            pass
+
     def _build_layout(self) -> None:
         # Scrollable container so all controls remain reachable on smaller screens.
         self.root.columnconfigure(0, weight=1)
@@ -377,7 +388,6 @@ class TicTacToeGUI:
         game_menu.add_command(label="New Game", command=self.start_new_game, accelerator="Ctrl+N")
         game_menu.add_command(label="New Match", command=self._new_match)
         game_menu.add_separator()
-        game_menu.add_command(label="Save History", command=self._save_history_now)
         game_menu.add_command(label="AI vs AI Mode", command=self._show_ai_vs_ai_popup)
         game_menu.add_separator()
         game_menu.add_command(label="Exit", command=self.root.quit)
@@ -940,10 +950,9 @@ class TicTacToeGUI:
         records.grid(row=15, column=0, sticky="ew", pady=(6, 2))
         records.columnconfigure((0, 1), weight=1)
         ttk.Button(records, text="View history", style="Panel.TButton", command=self._view_history_popup).grid(row=0, column=0, sticky="ew", padx=2, pady=2)
-        ttk.Button(records, text="Save history", style="Panel.TButton", command=self._save_history_now).grid(row=0, column=1, sticky="ew", padx=2, pady=2)
-        ttk.Button(records, text="Achievements", style="Panel.TButton", command=self._show_achievements_popup).grid(row=1, column=0, columnspan=2, sticky="ew", padx=2, pady=(2, 2))
-        ttk.Button(records, text="AI vs AI Mode", style="Panel.TButton", command=self._show_ai_vs_ai_popup).grid(row=2, column=0, columnspan=2, sticky="ew", padx=2, pady=(2, 2))
-        ttk.Button(records, text="Options", style="Panel.TButton", command=self._show_options_popup).grid(row=3, column=0, columnspan=2, sticky="ew", padx=2, pady=(2, 0))
+        ttk.Button(records, text="Achievements", style="Panel.TButton", command=self._show_achievements_popup).grid(row=0, column=1, sticky="ew", padx=2, pady=2)
+        ttk.Button(records, text="AI vs AI Mode", style="Panel.TButton", command=self._show_ai_vs_ai_popup).grid(row=1, column=0, columnspan=2, sticky="ew", padx=2, pady=(2, 2))
+        ttk.Button(records, text="Options", style="Panel.TButton", command=self._show_options_popup).grid(row=2, column=0, columnspan=2, sticky="ew", padx=2, pady=(2, 0))
 
     def _on_diff_change(self, _event=None) -> None:
         self._apply_selection()
@@ -1286,6 +1295,7 @@ class TicTacToeGUI:
         self._refresh_scoreboard()
         self._refresh_move_log()
         self.last_move_idx = None
+        self._save_history_now()
         self._update_streaks_and_badges(winner, elapsed)
         if self.auto_start.get():
             if getattr(self, "match_over", False):
@@ -1294,6 +1304,8 @@ class TicTacToeGUI:
             else:
                 self.root.after(600, self.start_new_game)
         self._play_sound()
+        # history auto-saved at end of round
+        self._log_user_event(f"Round finished ({winner}) in {elapsed:.2f}s" if elapsed else f"Round finished ({winner})")
 
     def _flash_ai_move(self, idx: int) -> None:
         if not self.animations_enabled.get():
@@ -1501,6 +1513,7 @@ class TicTacToeGUI:
         self.session.last_history_path = path
         self.log_path_var.set(f"History file: {path}")
         self.status_var.set("History saved.")
+        self._log_user_event(f"Session history saved to {path}")
 
     def _play_sound(self) -> None:
         if not self.sound_enabled.get():
