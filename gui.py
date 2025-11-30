@@ -1049,6 +1049,8 @@ class TicTacToeGUI:
         log_frame = ttk.Frame(board_frame, style="App.TFrame")
         log_frame.grid(row=4, column=0, columnspan=3, sticky="nsew", pady=(8, 0))
         ttk.Label(log_frame, text="Moves", style="Title.TLabel").grid(row=0, column=0, sticky="w")
+        self.moves_label = ttk.Label(log_frame, text=self._t("label.moves_log", "Moves"), style="Title.TLabel")
+        self.moves_label.grid(row=0, column=0, sticky="w")
         self.move_listbox = tk.Listbox(
             log_frame,
             height=3,
@@ -1319,9 +1321,9 @@ class TicTacToeGUI:
                 else:
                     d, r, ts, _ = item  # type: ignore[misc]
                 parsed.append(f"{d}: {r}")
-            self.history_var.set("Recent: " + " | ".join(parsed))
+            self.history_var.set(f"{self._t('score.recent','Recent')}: " + " | ".join(parsed))
         else:
-            self.history_var.set("Recent: none")
+            self.history_var.set(f"{self._t('score.recent','Recent')}: {self._t('score.recent_none','none')}")
         # Update achievements popup if open
         if self.achievements_popup and self.achievements_popup.winfo_exists():
             self._populate_achievements(self.achievements_popup)
@@ -1469,11 +1471,13 @@ class TicTacToeGUI:
         d_total = sum(sb.get(diff, {}).get("Draw", 0) for diff in game.DIFFICULTIES)
         games = x_total + o_total + d_total
         match_line = (
-            f"Match: Bo{self.match_length}, Round {self.match_rounds + (0 if self.match_over else 1)}/{self.match_length} "
-            f"| X={self.match_wins['X']} O={self.match_wins['O']} D={self.match_wins['Draw']}"
+            f"{self._t('score.match_prefix','Match')}: Bo{self.match_length}, Round {self.match_rounds + (0 if self.match_over else 1)}/{self.match_length} "
+            f"| X={self.match_wins['X']} O={self.match_wins['O']} {self._t('score.draws','Draws')}={self.match_wins['Draw']}"
         )
         self.quick_stats_var.set(
-            f"Total games: {games}\nX wins: {x_total} | O wins: {o_total} | Draws: {d_total}\n{match_line}"
+            f"{self._t('score.total_games','Total games')}: {games}\n"
+            f"{self._t('score.x_wins','X wins')}: {x_total} | {self._t('score.o_wins','O wins')}: {o_total} | {self._t('score.draws','Draws')}: {d_total}\n"
+            f"{match_line}"
         )
 
     def _update_streaks_and_badges(self, winner: str, elapsed: Optional[float]) -> None:
