@@ -1205,13 +1205,6 @@ class TicTacToeGUI:
         records = ttk.Frame(info, style="Panel.TFrame")
         records.grid(row=15, column=0, sticky="ew", pady=(6, 2))
         records.columnconfigure((0, 1), weight=1)
-        ttk.Label(
-            records,
-            text=self._t("menu.view", "View") + " ▸",
-            style="Muted.TLabel",
-            anchor="w",
-            padding=(4, 2),
-        ).grid(row=0, column=0, columnspan=2, sticky="w")
 
     def _on_diff_change(self, _event=None) -> None:
         self._apply_selection()
