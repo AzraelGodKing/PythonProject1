@@ -384,6 +384,12 @@ class TicTacToeGUI:
             except Exception:
                 pass
         log_path = os.path.join(LOG_DIR, "app.log")
+        # Clear prior session log so crash report only reflects current run.
+        try:
+            if os.path.exists(log_path):
+                os.remove(log_path)
+        except OSError:
+            pass
         handler = RotatingFileHandler(log_path, maxBytes=200_000, backupCount=3, encoding="utf-8", delay=True)
         fmt = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
         handler.setFormatter(fmt)
