@@ -1,8 +1,12 @@
 Change Log (local)
 
 v0.7
-- Sandbox mode, AI commentary, celebrations, human-like Normal default
-- Clean slate reset for badges/history; What's New/Change Log in View
+- Sandbox mode
+- AI commentary
+- Celebrations
+- Human-like Normal default
+- Clean slate reset for badges/history
+- What's New/Change Log in View
 
 v0.6
 - Replay export/load; badges (streak/fastest); history auto-save and user event log
