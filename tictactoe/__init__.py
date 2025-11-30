@@ -104,6 +104,42 @@ def run_doctor() -> None:
     print(f"- Badges status: {_check(BANNER_FILE)}")
 
 
+def play_replay(file_path: str) -> None:
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"Could not read replay ({exc}).")
+        return
+    moves: List[Tuple[str, int]] = data.get("moves", [])
+    board = [" "] * 9
+    print(f"Replaying {len(moves)} moves from {file_path}")
+    for turn, item in enumerate(moves, start=1):
+        if not (isinstance(item, list) or isinstance(item, tuple)) or len(item) != 2:
+            print(f"Invalid move format at turn {turn}")
+            return
+        symbol, idx = item
+        if symbol not in {"X", "O"}:
+            print(f"Invalid symbol at move {turn}")
+            return
+        if not isinstance(idx, int) or idx < 0 or idx > 8:
+            print(f"Invalid index at move {turn}")
+            return
+        if board[idx] != " ":
+            print(f"Conflict at move {turn}: spot already taken.")
+            return
+        board[idx] = symbol
+        print_board(board)
+        winner = check_winner(board)
+        if winner:
+            print(f"Winner at move {turn}: {winner}")
+            break
+        if board_full(board):
+            print("Board full: draw.")
+            break
+    print("Replay complete.")
+
+
 def update_badges_for_diff(
     badges: Dict[str, Dict[str, float]],
     difficulty: str,
@@ -876,7 +912,11 @@ def difficulty_display_label(level: str, personality: str) -> str:
     return f"{level} ({personality})"
 
 
-def play_round(ai_move_fn: Callable[[List[str]], int], difficulty_label: str) -> Optional[Tuple[str, float]]:
+def play_round(
+    ai_move_fn: Callable[[List[str]], int],
+    difficulty_label: str,
+    moves_log: Optional[List[Tuple[str, int]]] = None,
+) -> Optional[Tuple[str, float]]:
     board = [" "] * 9
     print(f"\nNew round! Difficulty: {difficulty_label}. You are X, the AI is O.")
     print("Enter your move as row, column (both 1-3) or a single spot 1-9. Example: 2,3 or 5")
@@ -903,6 +943,8 @@ def play_round(ai_move_fn: Callable[[List[str]], int], difficulty_label: str) ->
             continue
 
         board[idx] = "X"
+        if moves_log is not None:
+            moves_log.append(("X", idx))
 
         winner = check_winner(board)
         if winner:
@@ -919,6 +961,8 @@ def play_round(ai_move_fn: Callable[[List[str]], int], difficulty_label: str) ->
 
         ai_idx = ai_move_fn(board)
         board[ai_idx] = "O"
+        if moves_log is not None:
+            moves_log.append(("O", ai_idx))
         ai_row, ai_col = divmod(ai_idx, 3)
         print(f"AI plays at row {ai_row + 1}, column {ai_col + 1}.")
 
@@ -944,6 +988,7 @@ def play_session(
     non_interactive: bool = False,
     summary: Optional[Dict[str, object]] = None,
     history_limit: int = 100,
+    moves_log: Optional[List[Tuple[str, int]]] = None,
 ) -> Dict[str, Dict[str, int]]:
     _MINIMAX_CACHE.clear()
     session_history: List[HistoryEntry] = load_session_history_from_file(limit=history_limit)
@@ -967,7 +1012,7 @@ def play_session(
         print_match_score(match_wins, match_target)
         print_achievements(stats, session_history)
 
-        result = play_round(ai_move_fn, difficulty_label)
+        result = play_round(ai_move_fn, difficulty_label, moves_log=moves_log)
         if result is None:
             if non_interactive:
                 break
@@ -1081,6 +1126,7 @@ def play_session(
                 "history_entries": len(session_history),
                 "scoreboard": {k: dict(v) for k, v in scoreboard.items()},
                 "badges": badges,
+                "moves": moves_log or [],
             }
         )
     return scoreboard
@@ -1183,11 +1229,16 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         choices=("easy3", "normal5", "hard1"),
         help="Quick-start preset: easy3 (Easy Bo3), normal5 (Normal balanced Bo5), hard1 (Hard Bo1).",
     )
+    parser.add_argument("--save-replay", help="Write the auto-started game replay to this JSON file.")
+    parser.add_argument("--replay-file", help="Play back a saved replay JSON and exit.")
     return parser.parse_args(argv)
 
 
 def main(argv: Optional[List[str]] = None) -> None:
     args = parse_args(argv)
+    if args.replay_file:
+        play_replay(args.replay_file)
+        return
     if args.doctor:
         run_doctor()
         return
@@ -1226,6 +1277,7 @@ def main(argv: Optional[List[str]] = None) -> None:
             non_interactive=args.non_interactive,
             summary=summary,
             history_limit=max(1, args.history_limit),
+            moves_log=[],
         )
         expected = args.expect_winner
         if expected:
@@ -1233,6 +1285,14 @@ def main(argv: Optional[List[str]] = None) -> None:
             if actual != expected:
                 print(f"Expected winner {expected}, but got {actual}.")
                 raise SystemExit(1)
+        if args.save_replay:
+            try:
+                os.makedirs(os.path.dirname(args.save_replay) or ".", exist_ok=True)
+                with open(args.save_replay, "w", encoding="utf-8") as f:
+                    json.dump(summary, f)
+                print(f"Replay saved to {args.save_replay}")
+            except OSError as exc:
+                print(f"Could not save replay: {exc}")
         if args.output == "json":
             payload = json.dumps(summary, indent=2)
             print(payload)
