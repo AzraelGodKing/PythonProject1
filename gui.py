@@ -450,12 +450,21 @@ class TicTacToeGUI:
         popup = tk.Toplevel(self.root)
         popup.title(self._t("crash.title", "Crash Report"))
         popup.configure(bg=self._color("BG"))
-        tk.Label(popup, text=self._t("crash.tip", "Review the log below; no data leaves your machine."), bg=self._color("BG"), fg=self._color("TEXT"), wraplength=520, justify="left").pack(anchor="w", padx=10, pady=(8, 4))
-        text = tk.Text(popup, width=70, height=14, bg=self._color("PANEL"), fg=self._color("TEXT"), relief="flat")
-        text.pack(fill="both", expand=True, padx=10, pady=10)
+        container = ttk.Frame(popup, style="Panel.TFrame", padding=12)
+        container.pack(fill="both", expand=True, padx=8, pady=8)
+        ttk.Label(container, text=self._t("crash.title", "Crash Report"), style="Banner.TLabel").pack(anchor="w", pady=(0, 4))
+        ttk.Label(
+            container,
+            text=self._t("crash.tip", "Review the log below; no data leaves your machine."),
+            style="Muted.TLabel",
+            wraplength=520,
+            justify="left",
+        ).pack(anchor="w", pady=(0, 8))
+        text = tk.Text(container, width=70, height=14, bg=self._color("PANEL"), fg=self._color("TEXT"), relief="flat")
+        text.pack(fill="both", expand=True, pady=(0, 10))
         text.insert("end", "\n".join(traceback_lines))
         text.configure(state="disabled")
-        ttk.Button(popup, text="Close", style="Panel.TButton", command=popup.destroy).pack(pady=(0, 10))
+        ttk.Button(container, text="Close", style="Panel.TButton", command=popup.destroy).pack(pady=(0, 4), anchor="e")
 
     def _build_layout(self) -> None:
         # Scrollable container so all controls remain reachable on smaller screens.
@@ -488,14 +497,24 @@ class TicTacToeGUI:
         container = scroll_frame
         container.columnconfigure(0, weight=3)
         container.columnconfigure(1, weight=2)
+        container.rowconfigure(1, weight=1)
+
+        header = ttk.Frame(container, style="App.TFrame")
+        header.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 12))
+        ttk.Label(header, text="Tic-Tac-Toe Suite", style="Banner.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Label(
+            header,
+            text="Play, track, and tweak with a refreshed look.",
+            style="Muted.TLabel",
+        ).grid(row=1, column=0, sticky="w")
 
         left = ttk.Frame(container, style="App.TFrame")
-        left.grid(row=0, column=0, sticky="nsew")
+        left.grid(row=1, column=0, sticky="nsew")
         left.columnconfigure(0, weight=1)
         left.rowconfigure(1, weight=1)
 
         right = ttk.Frame(container, style="App.TFrame")
-        right.grid(row=0, column=1, sticky="nsew", padx=(12, 0))
+        right.grid(row=1, column=1, sticky="nsew", padx=(12, 0))
         right.columnconfigure(0, weight=1)
 
         self._build_controls(left)
@@ -647,9 +666,10 @@ class TicTacToeGUI:
             pass
 
         style.configure("App.TFrame", background=self._color("BG"))
-        style.configure("Panel.TFrame", background=self._color("PANEL"), relief="flat")
+        style.configure("Panel.TFrame", background=self._color("PANEL"), relief="flat", borderwidth=1)
         style.configure("App.TLabel", background=self._color("BG"), foreground=self._color("TEXT"), font=self._font("text"))
         style.configure("Title.TLabel", background=self._color("PANEL"), foreground=self._color("TEXT"), font=self._font("title"))
+        style.configure("Banner.TLabel", background=self._color("BG"), foreground=self._color("ACCENT"), font=self._font("title"))
         style.configure("Status.TLabel", background=self._color("BG"), foreground=self._color("ACCENT"), font=self._font("title"))
         style.configure("Muted.TLabel", background=self._color("PANEL"), foreground=self._color("MUTED"), font=self._font("text"))
         style.configure(
@@ -660,19 +680,14 @@ class TicTacToeGUI:
             focuscolor=self._color("PANEL"),
         )
 
-        style.configure(
+        style.configure("Panel.TButton", padding=(10, 8), background=self._color("PANEL"), foreground=self._color("TEXT"), borderwidth=0, relief="flat")
+        style.map(
             "Panel.TButton",
-            padding=8,
-            background=self._color("PANEL"),
-            foreground=self._color("TEXT"),
+            background=[("active", self._color("ACCENT"))],
+            foreground=[("active", self._color("BG"))],
         )
 
-        style.configure(
-            "Accent.TButton",
-            padding=8,
-            background=self._color("BTN"),
-            foreground=self._color("BG"),
-        )
+        style.configure("Accent.TButton", padding=(12, 9), background=self._color("BTN"), foreground=self._color("BG"), borderwidth=0, relief="flat")
         style.map(
             "Accent.TButton",
             background=[("active", self._color("ACCENT"))],
