@@ -1,4 +1,4 @@
-"""
+﻿"""
 Basic Tkinter UI for the tic-tac-toe game logic in tic-tac-toe.py.
 The UI is a thin layer over the existing logic: board state, AI moves, and scoreboard persistence.
 """
@@ -168,7 +168,26 @@ class GameSession:
 class TicTacToeGUI:
     def __init__(self, root: tk.Tk) -> None:
         self.available_languages = self._discover_languages()
-        self.language_names = {"en": "English", "es": "Español"}
+        self.language_names = {
+            # English
+            "en": "English",
+            # Spanish
+            "es": "Espanol",
+            # French
+            "fr": "Francais",
+            # German
+            "de": "Deutsch",
+            # Italian
+            "it": "Italiano",
+            # Portuguese
+            "pt": "Portugues",
+            # Russian
+            "ru": "Russkiy",
+            # Japanese
+            "ja": "Nihongo",
+            # Norwegian (Bokmal)
+            "no": "Norsk (Bokmal)",
+        }
         self.translations = {}
         self.language = "en"
         self.root = root
@@ -2099,4 +2118,5 @@ def main(argv=None) -> None:
 
 if __name__ == "__main__":
     main()
+
 
