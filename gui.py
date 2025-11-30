@@ -1038,6 +1038,13 @@ class TicTacToeGUI:
             game.save_match_scoreboard(self.match_scoreboard)
             self._refresh_scoreboard()
             self.status_var.set("Scoreboard reset.")
+    def _clean_slate(self) -> None:
+        if messagebox.askyesno("Clean slate", "Reset badges and clear history? Scoreboard will remain."):
+            game.reset_badges_and_history()
+            self.badges = game.load_badges()
+            self.session.history = []
+            self._refresh_scoreboard()
+            self.status_var.set("Badges and history reset.")
 
     def _refresh_board(self) -> None:
         for r in range(3):
