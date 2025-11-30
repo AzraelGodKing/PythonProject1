@@ -16,6 +16,7 @@ HISTORY_DIR = os.path.join(DATA_DIR, "history")
 SCOREBOARD_FILE = scoreboard.SCOREBOARD_FILE
 SCOREBOARD_BACKUP = scoreboard.SCOREBOARD_BACKUP
 HISTORY_FILE = os.path.join(HISTORY_DIR, "session_history.log")
+HISTORY_MAX_FILES = 5
 BANNER_FILE = os.path.join(SCOREBOARD_DIR, "badges.json")
 SAFE_MODE = scoreboard.SAFE_MODE
 SAFE_MODE_MESSAGE = scoreboard.SAFE_MODE_MESSAGE
@@ -413,9 +414,33 @@ def save_session_history_to_file(history: List[HistoryEntry], file_path: Optiona
             for diff, result, ts, duration in history:
                 f.write(f"{ts} - {diff}: {result} ({duration:.1f}s)\n")
         print(f"Session history saved to {file_path}.")
+        if rotate:
+            _prune_history_logs(dir_name, os.path.basename(base), ext or ".log")
     except (OSError, PermissionError) as exc:
         print(f"Could not save session history ({exc}).")
     return file_path
+
+
+def _prune_history_logs(dir_name: str, base_name: str, ext: str, keep: int = HISTORY_MAX_FILES) -> None:
+    """Keep only the most recent history files to avoid unbounded growth."""
+    if keep <= 0:
+        return
+    try:
+        candidates = []
+        for name in os.listdir(dir_name):
+            if not name.startswith(f"{base_name}_") or not name.endswith(ext):
+                continue
+            full_path = os.path.join(dir_name, name)
+            if os.path.isfile(full_path):
+                candidates.append((os.path.getmtime(full_path), full_path))
+        candidates.sort(reverse=True)  # newest first
+        for _, path in candidates[keep:]:
+            try:
+                os.remove(path)
+            except OSError:
+                continue
+    except OSError:
+        return
 
 
 def load_session_history_from_file(file_path: Optional[str] = None, limit: int = 100) -> List[HistoryEntry]:
