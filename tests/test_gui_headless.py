@@ -13,6 +13,7 @@ class TestGuiHeadless(unittest.TestCase):
             history_path = os.path.join(tmp, "history.log")
             game.set_safe_mode(True)
             game.configure_history_file(history_path)
+            game.save_badges({})
 
             import gui  # noqa: WPS433
 

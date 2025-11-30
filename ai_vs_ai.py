@@ -175,6 +175,7 @@ def _run_headless_ai_vs_ai(
         "ai_o": ai_o_name,
         "rounds": rounds,
         "scores": scores,
+        "badges": {},
     }
 
 

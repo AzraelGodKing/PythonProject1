@@ -10,6 +10,7 @@ import os
 import tkinter as tk
 import atexit
 import math
+import time
 from typing import Optional
 from tkinter import messagebox, ttk
 import argparse
@@ -195,6 +196,14 @@ class TicTacToeGUI:
         self.compact_sidebar = tk.BooleanVar(value=settings.get("compact_sidebar", False))
         self.match_winner = ""
         self.tooltips = []
+        self.badges = game.load_badges()
+        self.badge_var = tk.StringVar(value="")
+        self.streaks = {diff: 0 for diff in game.DIFFICULTIES}
+        self.round_start_time = None
+        self.badges = game.load_badges()
+        self.badge_var = tk.StringVar(value="")
+        self.streaks = {diff: 0 for diff in game.DIFFICULTIES}
+        self.round_start_time = None
 
         self.status_var = tk.StringVar(value="Choose a difficulty and start a game.")
         self.score_var = tk.StringVar()
@@ -891,6 +900,7 @@ class TicTacToeGUI:
 
         ttk.Label(sb_frame, text="Scoreboard", style="Title.TLabel").grid(row=0, column=0, sticky="w")
         ttk.Label(sb_frame, text="Match Scoreboard", style="Title.TLabel").grid(row=0, column=1, sticky="w")
+        ttk.Label(sb_frame, textvariable=self.badge_var, style="Muted.TLabel", wraplength=400, justify="left").grid(row=2, column=0, columnspan=2, sticky="w", pady=(4, 0))
 
         self.score_label = ttk.Label(sb_frame, textvariable=self.score_var, style="App.TLabel", font=self._font("text"), wraplength=180, justify="left")
         self.score_label.grid(row=1, column=0, sticky="w", pady=(2, 0))
@@ -1073,6 +1083,18 @@ class TicTacToeGUI:
             entry = msb.get(diff, game.DEFAULT_SCORE)
             match_lines.append(f"{diff}: X={entry['X']}  O={entry['O']}  D={entry['Draw']}")
         self.match_score_var.set("\n".join(match_lines) if match_lines else "No matches yet.")
+        badge_lines = []
+        for diff, info in self.badges.items():
+            streak = info.get("best_streak")
+            fw = info.get("fastest_win")
+            parts = []
+            if streak:
+                parts.append(f"streak {int(streak)}")
+            if fw:
+                parts.append(f"fastest {fw:.1f}s")
+            if parts:
+                badge_lines.append(f"{diff}: " + ", ".join(parts))
+        self.badge_var.set("Badges: " + " | ".join(badge_lines) if badge_lines else "Badges: none yet")
         if self.session.history:
             recent = self.session.history[-3:]
             parsed = []
@@ -1111,6 +1133,7 @@ class TicTacToeGUI:
         if self.show_heatmap.get():
             self.heatmap_locked = False
             self._refresh_heatmap()
+        self.round_start_time = time.perf_counter()
 
     def _rematch_same_settings(self) -> None:
         # Start a fresh match using current settings and match length.
@@ -1225,6 +1248,26 @@ class TicTacToeGUI:
             f"Total games: {games}\nX wins: {x_total} | O wins: {o_total} | Draws: {d_total}\n{match_line}"
         )
 
+    def _update_streaks_and_badges(self, winner: str, elapsed: Optional[float]) -> None:
+        diff = self.session.difficulty_key
+        if winner == "X":
+            self.streaks[diff] = self.streaks.get(diff, 0) + 1
+        else:
+            self.streaks[diff] = 0
+        best_streak = self.streaks[diff]
+        fastest_win = elapsed if winner == "X" and elapsed else None
+        improved = game.update_badges_for_diff(self.badges, diff, best_streak, fastest_win)
+        if any(improved.values()):
+            game.save_badges(self.badges)
+            msg_parts = []
+            if improved["streak"]:
+                msg_parts.append(f"New best streak on {diff}: {best_streak}")
+            if improved["fastest"] and fastest_win:
+                msg_parts.append(f"Fastest win on {diff}: {fastest_win:.1f}s")
+            if msg_parts:
+                self.status_var.set(" | ".join(msg_parts))
+            self._refresh_scoreboard()
+
     def _finish_round(self, winner: str) -> None:
         self.session.game_over = True
         if winner == "Draw":
@@ -1233,10 +1276,17 @@ class TicTacToeGUI:
             self.status_var.set(f"Player {winner} wins! Start a new game.")
         self._set_status_icon("done")
         self.session.record_result(winner)
+        elapsed = None
+        if self.round_start_time:
+            try:
+                elapsed = time.perf_counter() - self.round_start_time
+            except Exception:
+                elapsed = None
         self._update_match_progress(winner)
         self._refresh_scoreboard()
         self._refresh_move_log()
         self.last_move_idx = None
+        self._update_streaks_and_badges(winner, elapsed)
         if self.auto_start.get():
             if getattr(self, "match_over", False):
                 # Auto-start a fresh match when the current one is done (helps Bo1 users).
