@@ -445,7 +445,15 @@ def _prune_history_dirs(history_root: str, keep: int = HISTORY_MAX_FILES) -> Non
 
 
 def load_session_history_from_file(file_path: Optional[str] = None, limit: int = 100) -> List[HistoryEntry]:
-    file_path = file_path or HISTORY_FILE
+    global HISTORY_FILE
+    if file_path:
+        resolved_path = file_path
+    else:
+        resolved_path = _latest_history_file()
+        if not resolved_path:
+            resolved_path = _ensure_today_history_file()
+        HISTORY_FILE = resolved_path
+    file_path = resolved_path
     if SAFE_MODE:
         return []
     entries: List[HistoryEntry] = []
@@ -477,6 +485,40 @@ def load_session_history_from_file(file_path: Optional[str] = None, limit: int =
         result = result_part
         entries.append((diff, result, ts_part, duration))
     return entries
+
+
+def _latest_history_file() -> Optional[str]:
+    """Find the most recent history file under dated folders; fallback to root file."""
+    try:
+        dated_dirs = []
+        for name in os.listdir(HISTORY_DIR):
+            path = os.path.join(HISTORY_DIR, name)
+            if os.path.isdir(path) and name.isdigit():
+                dated_dirs.append(name)
+        if dated_dirs:
+            dated_dirs.sort(reverse=True)
+            for name in dated_dirs:
+                candidate = os.path.join(HISTORY_DIR, name, "session_history.log")
+                if os.path.isfile(candidate):
+                    return candidate
+    except OSError:
+        pass
+    legacy = os.path.join(HISTORY_DIR, "session_history.log")
+    return legacy if os.path.isfile(legacy) else None
+
+
+def _ensure_today_history_file() -> str:
+    """Ensure today's history file exists and return its path."""
+    today_dir = os.path.join(HISTORY_DIR, datetime.now().strftime("%Y%m%d"))
+    os.makedirs(today_dir, exist_ok=True)
+    path = os.path.join(today_dir, "session_history.log")
+    if not os.path.exists(path):
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write("")
+        except OSError:
+            pass
+    return path
 
 
 def maybe_clear_history_file(file_path: Optional[str] = None) -> None:
