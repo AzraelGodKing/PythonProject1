@@ -14,6 +14,7 @@ HISTORY_DIR = os.path.join(DATA_DIR, "history")
 SCOREBOARD_FILE = scoreboard.SCOREBOARD_FILE
 SCOREBOARD_BACKUP = scoreboard.SCOREBOARD_BACKUP
 HISTORY_FILE = os.path.join(HISTORY_DIR, "session_history.log")
+BANNER_FILE = os.path.join(SCOREBOARD_DIR, "badges.json")
 SAFE_MODE = scoreboard.SAFE_MODE
 SAFE_MODE_MESSAGE = scoreboard.SAFE_MODE_MESSAGE
 DEFAULT_MATCH_LENGTH = 3
@@ -48,6 +49,54 @@ def set_safe_mode(enabled: bool) -> None:
     scoreboard.set_safe_mode(enabled)
     global SAFE_MODE
     SAFE_MODE = scoreboard.SAFE_MODE
+
+
+def load_badges(file_path: str = BANNER_FILE) -> Dict[str, Dict[str, float]]:
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, dict):
+            return {
+                diff: {
+                    "best_streak": float(entry.get("best_streak", 0)),
+                    "fastest_win": float(entry.get("fastest_win")) if entry.get("fastest_win") is not None else None,
+                }
+                for diff, entry in data.items()
+                if isinstance(entry, dict)
+            }
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return {}
+
+
+def save_badges(badges: Dict[str, Dict[str, float]], file_path: str = BANNER_FILE) -> None:
+    if SAFE_MODE:
+        return
+    try:
+        os.makedirs(os.path.dirname(file_path) or ".", exist_ok=True)
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(badges, f)
+    except OSError:
+        pass
+
+
+def update_badges_for_diff(
+    badges: Dict[str, Dict[str, float]],
+    difficulty: str,
+    best_streak: Optional[int],
+    fastest_win: Optional[float],
+) -> Dict[str, bool]:
+    updated = {"streak": False, "fastest": False}
+    entry = badges.setdefault(difficulty, {"best_streak": 0, "fastest_win": None})
+    if best_streak is not None and best_streak > entry.get("best_streak", 0):
+        entry["best_streak"] = best_streak
+        updated["streak"] = True
+    if fastest_win is not None:
+        current_fw = entry.get("fastest_win")
+        if current_fw is None or fastest_win < current_fw:
+            entry["fastest_win"] = fastest_win
+            updated["fastest"] = True
+    return updated
 
 
 def print_board(board: List[str]) -> None:
@@ -876,6 +925,7 @@ def play_session(
     session_history: List[HistoryEntry] = load_session_history_from_file(limit=history_limit)
     stats = _new_stats()
     match_scoreboard = load_match_scoreboard()
+    badges = load_badges()
 
     diff_key, ai_move_fn, personality = choose_difficulty(diff_key_override, personality_override)
     difficulty_label = difficulty_display_label(diff_key, personality)
@@ -913,6 +963,17 @@ def play_session(
         update_stats(stats, diff_key, winner, duration)
         match_wins[winner] = match_wins.get(winner, 0) + 1
         match_rounds += 1
+
+        # Badge tracking per difficulty (best streak, fastest win)
+        streak_best = stats.get(diff_key, {}).get("best_streak")
+        fastest_win = stats.get(diff_key, {}).get("fastest_win")
+        improved = update_badges_for_diff(badges, diff_key, streak_best, fastest_win)
+        if any(improved.values()):
+            save_badges(badges)
+            if improved["streak"]:
+                print(f"New best streak on {diff_key}: {streak_best} wins.")
+            if improved["fastest"] and fastest_win:
+                print(f"Fastest win on {diff_key}: {fastest_win:.1f}s.")
 
         save_scoreboard(scoreboard)
         print_scoreboard(scoreboard)
@@ -995,6 +1056,7 @@ def play_session(
                 "match_wins": dict(match_wins),
                 "history_entries": len(session_history),
                 "scoreboard": {k: dict(v) for k, v in scoreboard.items()},
+                "badges": badges,
             }
         )
     return scoreboard

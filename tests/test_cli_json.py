@@ -48,6 +48,7 @@ class TestCliJson(unittest.TestCase):
         self.assertEqual(data["ai_x"], "Hard")
         self.assertEqual(data["ai_o"], "Hard")
         self.assertIn("scores", data)
+        self.assertIn("badges", data)
 
     def test_ai_vs_ai_expectation_failure_exits(self) -> None:
         with self.assertRaises(SystemExit):
