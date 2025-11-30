@@ -725,6 +725,33 @@ class TicTacToeGUI:
         )
         messagebox.showinfo("What's new", msg)
 
+    def _refresh_localized_text(self) -> None:
+        # Labels
+        self.diff_label.configure(text=self._t("label.difficulty", "Difficulty:"))
+        self.personality_label.configure(text=self._t("label.personality", "Personality:"))
+        self.match_label_title.configure(text=self._t("label.match_best_of", "Match (best of):"))
+        self.board_title.configure(text=self._t("label.board", "Board"))
+        self.status_title.configure(text=self._t("label.status", "Status"))
+        self.scoreboard_title.configure(text=self._t("label.scoreboard", "Scoreboard"))
+        self.match_scoreboard_title.configure(text=self._t("label.match_scoreboard", "Match Scoreboard"))
+        self.match_score_title.configure(text=self._t("label.match_score", "Match Score"))
+        self.quick_stats_title.configure(text=self._t("label.quick_stats", "Quick Stats"))
+        self.recent_title.configure(text=self._t("label.recent_results", "Recent Results"))
+        self.shortcuts_title.configure(text=self._t("label.shortcuts", "Shortcuts"))
+        # Buttons
+        self.start_btn.configure(text=self._t("button.new_game", "New Game"))
+        self.reset_btn.configure(text=self._t("button.reset_scoreboard", "Reset Scoreboard"))
+        self.rematch_button.configure(text=self._t("button.rematch", "Rematch"))
+        self.pause_ai_btn.configure(text=self._t("button.pause_ai", "Pause AI"))
+        self.sandbox_btn.configure(text=self._t("button.sandbox", "Sandbox"))
+        self.hint_btn.configure(text=self._t("button.hint", "Hint"))
+        self.undo_btn.configure(text=self._t("button.undo_move", "Undo Move"))
+        self.view_history_btn.configure(text=self._t("button.view_history", "View history"))
+        self.achievements_btn.configure(text=self._t("button.achievements", "Achievements"))
+        self.clean_slate_btn.configure(text=self._t("button.clean_slate", "Clean slate"))
+        self.ai_mode_btn.configure(text=self._t("button.ai_mode", "AI vs AI Mode"))
+        self.options_btn.configure(text=self._t("button.options", "Options"))
+
     def _show_intro_overlay(self, force: bool = False) -> None:
         if not force and not self.show_intro_overlay.get():
             return
@@ -910,6 +937,7 @@ class TicTacToeGUI:
         self._build_menu()
         self.status_var.set(self._t("status.choose", "Choose a difficulty and start a game."))
         self._save_settings()
+        self._refresh_localized_text()
 
     def _update_theme_swatch(self, canvas: tk.Canvas) -> None:
         canvas.delete("all")
@@ -924,7 +952,8 @@ class TicTacToeGUI:
         top.grid(row=0, column=0, sticky="ew")
         top.columnconfigure(2, weight=1)
 
-        ttk.Label(top, text=self._t("label.difficulty", "Difficulty:"), style="App.TLabel", font=self._font("title")).grid(row=0, column=0, sticky="w", padx=(0, 4))
+        self.diff_label = ttk.Label(top, text=self._t("label.difficulty", "Difficulty:"), style="App.TLabel", font=self._font("title"))
+        self.diff_label.grid(row=0, column=0, sticky="w", padx=(0, 4))
         self.diff_var = tk.StringVar(value="Easy")
         diff_menu = ttk.Combobox(
             top,
@@ -937,7 +966,8 @@ class TicTacToeGUI:
         diff_menu.grid(row=0, column=1, padx=(0, 6), sticky="w")
         diff_menu.bind("<<ComboboxSelected>>", self._on_diff_change)
 
-        ttk.Label(top, text=self._t("label.personality", "Personality:"), style="App.TLabel", font=self._font("title")).grid(row=0, column=2, sticky="w", padx=(0, 4))
+        self.personality_label = ttk.Label(top, text=self._t("label.personality", "Personality:"), style="App.TLabel", font=self._font("title"))
+        self.personality_label.grid(row=0, column=2, sticky="w", padx=(0, 4))
         self.personality_var = tk.StringVar(value="balanced")
         self.personality_menu = ttk.Combobox(
             top,
@@ -965,7 +995,8 @@ class TicTacToeGUI:
 
         match_row = ttk.Frame(top, style="App.TFrame")
         match_row.grid(row=1, column=0, columnspan=6, sticky="ew", pady=(6, 0))
-        ttk.Label(match_row, text=self._t("label.match_best_of", "Match (best of):"), style="App.TLabel", font=self._font("title")).grid(row=0, column=0, sticky="w", padx=(0, 6))
+        self.match_label_title = ttk.Label(match_row, text=self._t("label.match_best_of", "Match (best of):"), style="App.TLabel", font=self._font("title"))
+        self.match_label_title.grid(row=0, column=0, sticky="w", padx=(0, 6))
         self.match_entry = ttk.Entry(match_row, textvariable=self.match_length_var, width=6)
         self.match_entry.grid(row=0, column=1, padx=4, sticky="w")
         ttk.Button(match_row, text=self._t("button.new_match", "New Match"), style="Panel.TButton", command=self._new_match).grid(row=0, column=2, padx=4, sticky="w")
@@ -981,7 +1012,8 @@ class TicTacToeGUI:
         board_frame.columnconfigure((0, 1, 2), weight=1)
         board_frame.rowconfigure((1, 2, 3), weight=1)
 
-        ttk.Label(board_frame, text=self._t("label.board", "Board"), style="Title.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 6))
+        self.board_title = ttk.Label(board_frame, text=self._t("label.board", "Board"), style="Title.TLabel")
+        self.board_title.grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 6))
 
         self.buttons = []
         for r in range(3):
@@ -1038,7 +1070,8 @@ class TicTacToeGUI:
 
         status_frame = ttk.Frame(info, style="Panel.TFrame")
         status_frame.grid(row=0, column=0, sticky="ew", pady=(0, 4))
-        ttk.Label(status_frame, text=self._t("label.status", "Status"), style="Title.TLabel").grid(row=0, column=0, sticky="w")
+        self.status_title = ttk.Label(status_frame, text=self._t("label.status", "Status"), style="Title.TLabel")
+        self.status_title.grid(row=0, column=0, sticky="w")
         self.status_icon = ttk.Label(status_frame, text="⏸️", style="Status.TLabel", font=self._font("title"))
         self.status_icon.grid(row=1, column=0, sticky="w", padx=(0, 6))
         self.status_label = ttk.Label(status_frame, textvariable=self.status_var, style="Status.TLabel", font=self._font("title"), wraplength=240)
@@ -1048,8 +1081,10 @@ class TicTacToeGUI:
         sb_frame.grid(row=2, column=0, sticky="ew", pady=(4, 6))
         sb_frame.columnconfigure((0, 1), weight=1)
 
-        ttk.Label(sb_frame, text=self._t("label.scoreboard", "Scoreboard"), style="Title.TLabel").grid(row=0, column=0, sticky="w")
-        ttk.Label(sb_frame, text=self._t("label.match_scoreboard", "Match Scoreboard"), style="Title.TLabel").grid(row=0, column=1, sticky="w")
+        self.scoreboard_title = ttk.Label(sb_frame, text=self._t("label.scoreboard", "Scoreboard"), style="Title.TLabel")
+        self.scoreboard_title.grid(row=0, column=0, sticky="w")
+        self.match_scoreboard_title = ttk.Label(sb_frame, text=self._t("label.match_scoreboard", "Match Scoreboard"), style="Title.TLabel")
+        self.match_scoreboard_title.grid(row=0, column=1, sticky="w")
         ttk.Label(sb_frame, textvariable=self.badge_var, style="Muted.TLabel", wraplength=400, justify="left").grid(row=2, column=0, columnspan=2, sticky="w", pady=(4, 0))
 
         self.score_label = ttk.Label(sb_frame, textvariable=self.score_var, style="App.TLabel", font=self._font("text"), wraplength=180, justify="left")
@@ -1058,19 +1093,23 @@ class TicTacToeGUI:
         self.match_score_label = ttk.Label(sb_frame, textvariable=self.match_score_var, style="App.TLabel", font=self._font("text"), wraplength=180, justify="left")
         self.match_score_label.grid(row=1, column=1, sticky="w", pady=(2, 0))
 
-        ttk.Label(info, text=self._t("label.match_score", "Match Score"), style="Title.TLabel").grid(row=3, column=0, sticky="w")
+        self.match_score_title = ttk.Label(info, text=self._t("label.match_score", "Match Score"), style="Title.TLabel")
+        self.match_score_title.grid(row=3, column=0, sticky="w")
         self.match_label = ttk.Label(info, textvariable=self.match_var, style="App.TLabel", font=self._font("text"), wraplength=260, justify="left")
         self.match_label.grid(row=4, column=0, sticky="w", pady=(2, 6))
 
-        ttk.Label(info, text=self._t("label.quick_stats", "Quick Stats"), style="Title.TLabel").grid(row=5, column=0, sticky="w")
+        self.quick_stats_title = ttk.Label(info, text=self._t("label.quick_stats", "Quick Stats"), style="Title.TLabel")
+        self.quick_stats_title.grid(row=5, column=0, sticky="w")
         self.quick_stats_label = ttk.Label(info, textvariable=self.quick_stats_var, style="App.TLabel", font=self._font("text"), wraplength=260, justify="left")
         self.quick_stats_label.grid(row=6, column=0, sticky="w", pady=(2, 6))
 
-        ttk.Label(info, text=self._t("label.recent_results", "Recent Results"), style="Title.TLabel").grid(row=7, column=0, sticky="w")
+        self.recent_title = ttk.Label(info, text=self._t("label.recent_results", "Recent Results"), style="Title.TLabel")
+        self.recent_title.grid(row=7, column=0, sticky="w")
         self.history_label = ttk.Label(info, textvariable=self.history_var, style="App.TLabel", font=self._font("text"), wraplength=260, justify="left")
         self.history_label.grid(row=8, column=0, sticky="w", pady=(2, 6))
 
-        ttk.Label(info, text=self._t("label.shortcuts", "Shortcuts"), style="Title.TLabel").grid(row=12, column=0, sticky="w")
+        self.shortcuts_title = ttk.Label(info, text=self._t("label.shortcuts", "Shortcuts"), style="Title.TLabel")
+        self.shortcuts_title.grid(row=12, column=0, sticky="w")
         ttk.Label(
             info,
             text="Moves: 1-9  |  New: N/Ctrl+N",
@@ -1083,17 +1122,24 @@ class TicTacToeGUI:
         btn_row = ttk.Frame(info, style="Panel.TFrame")
         btn_row.grid(row=14, column=0, sticky="ew", pady=(4, 0))
         btn_row.columnconfigure((0, 1), weight=1)
-        ttk.Button(btn_row, text=self._t("button.hint", "Hint"), style="Panel.TButton", command=self._show_hint).grid(row=0, column=0, sticky="ew", padx=3)
-        ttk.Button(btn_row, text=self._t("button.undo_move", "Undo Move"), style="Panel.TButton", command=self._undo_move).grid(row=0, column=1, sticky="ew", padx=3)
+        self.hint_btn = ttk.Button(btn_row, text=self._t("button.hint", "Hint"), style="Panel.TButton", command=self._show_hint)
+        self.hint_btn.grid(row=0, column=0, sticky="ew", padx=3)
+        self.undo_btn = ttk.Button(btn_row, text=self._t("button.undo_move", "Undo Move"), style="Panel.TButton", command=self._undo_move)
+        self.undo_btn.grid(row=0, column=1, sticky="ew", padx=3)
 
         records = ttk.Frame(info, style="Panel.TFrame")
         records.grid(row=15, column=0, sticky="ew", pady=(6, 2))
         records.columnconfigure((0, 1), weight=1)
-        ttk.Button(records, text=self._t("button.view_history", "View history"), style="Panel.TButton", command=self._view_history_popup).grid(row=0, column=0, sticky="ew", padx=2, pady=2)
-        ttk.Button(records, text=self._t("button.achievements", "Achievements"), style="Panel.TButton", command=self._show_achievements_popup).grid(row=0, column=1, sticky="ew", padx=2, pady=2)
-        ttk.Button(records, text=self._t("button.clean_slate", "Clean slate"), style="Panel.TButton", command=self._clean_slate).grid(row=1, column=0, sticky="ew", padx=2, pady=(2, 2))
-        ttk.Button(records, text=self._t("button.ai_mode", "AI vs AI Mode"), style="Panel.TButton", command=self._show_ai_vs_ai_popup).grid(row=1, column=1, sticky="ew", padx=2, pady=(2, 2))
-        ttk.Button(records, text=self._t("button.options", "Options"), style="Panel.TButton", command=self._show_options_popup).grid(row=2, column=0, columnspan=2, sticky="ew", padx=2, pady=(2, 0))
+        self.view_history_btn = ttk.Button(records, text=self._t("button.view_history", "View history"), style="Panel.TButton", command=self._view_history_popup)
+        self.view_history_btn.grid(row=0, column=0, sticky="ew", padx=2, pady=2)
+        self.achievements_btn = ttk.Button(records, text=self._t("button.achievements", "Achievements"), style="Panel.TButton", command=self._show_achievements_popup)
+        self.achievements_btn.grid(row=0, column=1, sticky="ew", padx=2, pady=2)
+        self.clean_slate_btn = ttk.Button(records, text=self._t("button.clean_slate", "Clean slate"), style="Panel.TButton", command=self._clean_slate)
+        self.clean_slate_btn.grid(row=1, column=0, sticky="ew", padx=2, pady=(2, 2))
+        self.ai_mode_btn = ttk.Button(records, text=self._t("button.ai_mode", "AI vs AI Mode"), style="Panel.TButton", command=self._show_ai_vs_ai_popup)
+        self.ai_mode_btn.grid(row=1, column=1, sticky="ew", padx=2, pady=(2, 2))
+        self.options_btn = ttk.Button(records, text=self._t("button.options", "Options"), style="Panel.TButton", command=self._show_options_popup)
+        self.options_btn.grid(row=2, column=0, columnspan=2, sticky="ew", padx=2, pady=(2, 0))
 
     def _on_diff_change(self, _event=None) -> None:
         self._apply_selection()
