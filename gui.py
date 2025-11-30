@@ -338,6 +338,25 @@ class TicTacToeGUI:
         except OSError:
             pass
 
+    def _show_change_log_popup(self) -> None:
+        lines = [
+            "Change Log (local)",
+            "- Clean slate reset for badges/history.",
+            "- Human-like Normal AI default; toggle in Options.",
+            "- Replay export/load and batch self-tests via CLI.",
+            "- Winning-line highlight and celebration flashes.",
+            "- Sandbox mode for experimenting with boards.",
+            "- Auto-save history and user event logging.",
+        ]
+        popup = tk.Toplevel(self.root)
+        popup.title("Change Log")
+        popup.configure(bg=self._color("BG"))
+        text = tk.Text(popup, width=60, height=12, bg=self._color("PANEL"), fg=self._color("TEXT"), relief="flat")
+        text.pack(fill="both", expand=True, padx=10, pady=10)
+        text.insert("end", "\n".join(lines))
+        text.configure(state="disabled")
+        ttk.Button(popup, text="Close", style="Panel.TButton", command=popup.destroy).pack(pady=(0, 10))
+
     def _build_layout(self) -> None:
         # Scrollable container so all controls remain reachable on smaller screens.
         self.root.columnconfigure(0, weight=1)
@@ -406,6 +425,8 @@ class TicTacToeGUI:
         view_menu.add_command(label="Achievements", command=self._show_achievements_popup)
         view_menu.add_command(label="History", command=self._view_history_popup)
         view_menu.add_command(label="Welcome Overlay", command=lambda: self._show_intro_overlay(force=True))
+        view_menu.add_command(label="What's New", command=self._show_whats_new_popup)
+        view_menu.add_command(label="Change Log", command=self._show_change_log_popup)
         view_menu.add_command(label="Options", command=self._show_options_popup)
         menubar.add_cascade(label="View", menu=view_menu)
 
@@ -623,15 +644,19 @@ class TicTacToeGUI:
     def _maybe_show_whats_new(self) -> None:
         if not self.show_whats_new.get():
             return
-        msg = (
-            "- New clean-slate reset for badges/history\n"
-            "- Human-like Normal AI on by default\n"
-            "- Winning line highlight and auto-save logs\n"
-            "- Batch self-test and perf dashboard via CLI"
-        )
-        messagebox.showinfo("What's new", msg)
+        self._show_whats_new_popup()
         self.show_whats_new.set(False)
         self._save_settings()
+
+    def _show_whats_new_popup(self) -> None:
+        msg = (
+            "- Clean slate button resets badges/history without touching scores.\n"
+            "- Human-like Normal AI is on by default for a softer challenge.\n"
+            "- Winning line highlights and auto-save logs each round.\n"
+            "- CLI adds batch self-test (--batch-hard) and perf dashboard (--perf).\n"
+            "- Sandbox toggle lets you place pieces and ask for hints."
+        )
+        messagebox.showinfo("What's new", msg)
 
     def _show_intro_overlay(self, force: bool = False) -> None:
         if not force and not self.show_intro_overlay.get():
