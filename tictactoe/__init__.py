@@ -80,6 +80,30 @@ def save_badges(badges: Dict[str, Dict[str, float]], file_path: str = BANNER_FIL
         pass
 
 
+def run_doctor() -> None:
+    print("Tic-Tac-Toe diagnostics")
+    print(f"- Python: {sys.version.split()[0]}")
+    print(f"- Safe mode: {SAFE_MODE}")
+    print(f"- Scoreboard file: {SCOREBOARD_FILE}")
+    print(f"- History file: {HISTORY_FILE}")
+    print(f"- Badges file: {BANNER_FILE}")
+
+    def _check(path: str) -> str:
+        try:
+            if os.path.exists(path):
+                with open(path, "r", encoding="utf-8") as f:
+                    f.read(64)
+                return "ok"
+            return "missing"
+        except Exception as exc:
+            return f"error ({exc})"
+
+    print(f"- Scoreboard status: {_check(SCOREBOARD_FILE)}")
+    print(f"- Match scoreboard status: {_check(scoreboard.MATCH_SCOREBOARD_FILE)}")
+    print(f"- History status: {_check(HISTORY_FILE)}")
+    print(f"- Badges status: {_check(BANNER_FILE)}")
+
+
 def update_badges_for_diff(
     badges: Dict[str, Dict[str, float]],
     difficulty: str,
@@ -1149,11 +1173,24 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         action="store_true",
         help="Remove existing history file before starting (saves clean logs).",
     )
+    parser.add_argument(
+        "--doctor",
+        action="store_true",
+        help="Run diagnostics (paths, safe mode, scoreboard integrity) and exit.",
+    )
+    parser.add_argument(
+        "--preset",
+        choices=("easy3", "normal5", "hard1"),
+        help="Quick-start preset: easy3 (Easy Bo3), normal5 (Normal balanced Bo5), hard1 (Hard Bo1).",
+    )
     return parser.parse_args(argv)
 
 
 def main(argv: Optional[List[str]] = None) -> None:
     args = parse_args(argv)
+    if args.doctor:
+        run_doctor()
+        return
     if args.safe_mode is not None:
         set_safe_mode(args.safe_mode)
     if args.history_file:
@@ -1166,6 +1203,18 @@ def main(argv: Optional[List[str]] = None) -> None:
             pass
 
     scoreboard_obj = load_scoreboard()
+    if args.preset and not args.difficulty:
+        if args.preset == "easy3":
+            args.difficulty = "Easy"
+            args.best_of = 3
+        elif args.preset == "normal5":
+            args.difficulty = "Normal"
+            args.personality = args.personality or "balanced"
+            args.best_of = 5
+        elif args.preset == "hard1":
+            args.difficulty = "Hard"
+            args.best_of = 1
+
     auto_start = args.start or args.difficulty or args.personality or args.best_of
     if auto_start:
         summary: Dict[str, object] = {}
