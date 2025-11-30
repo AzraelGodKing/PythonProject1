@@ -18,6 +18,9 @@
   "status.ai_thinking": "La IA está pensando...",
   "status.ai_paused": "IA en pausa. Reanuda para continuar.",
   "status.ai_resuming": "IA reanudando...",
+  "status.match_draw": "Fin de la serie: empate. Inicia una nueva serie.",
+  "status.match_winner": "{winner} gana la serie.",
+  "status.match_end": "{winner} gana. Inicia una nueva partida.",
   "status.prefix": "",
 
   "options.language": "Idioma",
@@ -45,7 +48,7 @@
   "button.undo_move": "Deshacer movimiento",
   "button.view_history": "Ver historial",
   "button.achievements": "Logros",
-  "button.clean_slate": "Reiniciar (badges/historial)",
+  "button.clean_slate": "Reiniciar (insignias/historial)",
   "button.ai_mode": "Modo IA vs IA",
   "button.options": "Opciones",
 

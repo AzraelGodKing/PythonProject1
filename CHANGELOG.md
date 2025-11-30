@@ -1,5 +1,13 @@
 Change Log (local)
 
+v0.10
+- Added new localizations: Norwegian, French, German, Italian, Portuguese, Russian, Japanese
+- Language selector now lists full names for new locales
+
+v0.9
+- Norwegian localization (menus, labels, statuses, difficulty/personality)
+- English/Spanish locale clean-up and match-status translations
+
 v0.8
 - Localization scaffolding with English/Spanish translations (menus, labels, difficulty/personality)
 - Crash report viewer and user-facing change log

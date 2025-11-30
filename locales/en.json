@@ -18,6 +18,9 @@
   "status.ai_thinking": "AI is thinking...",
   "status.ai_paused": "AI paused. Resume to continue.",
   "status.ai_resuming": "AI resuming...",
+  "status.match_draw": "Match over: draw. Start a new match.",
+  "status.match_winner": "{winner} wins the match.",
+  "status.match_end": "{winner} wins! Start a new game.",
   "status.prefix": "",
 
   "options.language": "Language",
@@ -49,16 +52,6 @@
   "button.ai_mode": "AI vs AI Mode",
   "button.options": "Options",
 
-  "difficulty.easy": "Easy",
-  "difficulty.normal": "Normal",
-  "difficulty.hard": "Hard",
-
-  "personality.balanced": "Balanced",
-  "personality.defensive": "Defensive",
-  "personality.aggressive": "Aggressive",
-  "personality.misdirection": "Misdirection",
-  "personality.mirror": "Mirror"
-
   "crash.title": "Crash Report",
   "crash.empty": "No crash trace found.",
   "crash.tip": "Review the log below; no data leaves your machine.",
@@ -73,5 +66,15 @@
   "score.recent": "Recent",
   "score.recent_none": "none",
   "shortcuts.moves": "Moves",
-  "shortcuts.new": "New"
+  "shortcuts.new": "New",
+
+  "difficulty.easy": "Easy",
+  "difficulty.normal": "Normal",
+  "difficulty.hard": "Hard",
+
+  "personality.balanced": "Balanced",
+  "personality.defensive": "Defensive",
+  "personality.aggressive": "Aggressive",
+  "personality.misdirection": "Misdirection",
+  "personality.mirror": "Mirror"
 }
