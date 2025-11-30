@@ -1,5 +1,9 @@
 Change Log (local)
 
+v0.8
+- Localization scaffolding with English/Spanish translations (menus, labels, difficulty/personality)
+- Crash report viewer and user-facing change log
+
 v0.7
 - Sandbox mode
 - AI commentary
@@ -8,10 +12,6 @@ v0.7
 - Clean slate reset for badges/history
 - What's New / Change Log in View
 - Bug fixes
-
-v0.8
-- Localization scaffolding with English/Spanish translations (menus, labels, difficulty/personality)
-- Crash report viewer and user-facing change log
 
 v0.6
 - Replay export/load
