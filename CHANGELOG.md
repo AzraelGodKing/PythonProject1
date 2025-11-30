@@ -1,5 +1,8 @@
 Change Log (local)
 
+v0.11
+- Session history now saves per-day in dated folders, auto-creates today’s file, loads most recent history, and prunes old days
+
 v0.10
 - Added new localizations: Norwegian, French, German, Italian, Portuguese, Russian, Japanese
 - Language selector now lists full names for new locales

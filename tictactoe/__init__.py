@@ -6,6 +6,7 @@ import os
 import random
 import sys
 import time
+import shutil
 from datetime import datetime
 from typing import Callable, Dict, List, Optional, Tuple
 from . import scoreboard
@@ -16,6 +17,7 @@ HISTORY_DIR = os.path.join(DATA_DIR, "history")
 SCOREBOARD_FILE = scoreboard.SCOREBOARD_FILE
 SCOREBOARD_BACKUP = scoreboard.SCOREBOARD_BACKUP
 HISTORY_FILE = os.path.join(HISTORY_DIR, "session_history.log")
+HISTORY_MAX_FILES = 5
 BANNER_FILE = os.path.join(SCOREBOARD_DIR, "badges.json")
 SAFE_MODE = scoreboard.SAFE_MODE
 SAFE_MODE_MESSAGE = scoreboard.SAFE_MODE_MESSAGE
@@ -402,24 +404,56 @@ def save_session_history_to_file(history: List[HistoryEntry], file_path: Optiona
     if not history:
         print("No session history to save.")
         return file_path
-    if rotate:
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        base, ext = os.path.splitext(file_path)
-        file_path = f"{base}_{ts}{ext or '.log'}"
     dir_name = os.path.dirname(file_path) or "."
-    os.makedirs(dir_name, exist_ok=True)
+    if rotate:
+        ts = datetime.now().strftime("%Y%m%d")
+        dir_name = os.path.join(HISTORY_DIR, ts)
+        os.makedirs(dir_name, exist_ok=True)
+        file_path = os.path.join(dir_name, "session_history.log")
+    else:
+        os.makedirs(dir_name, exist_ok=True)
     try:
         with open(file_path, "a", encoding="utf-8") as f:
             for diff, result, ts, duration in history:
                 f.write(f"{ts} - {diff}: {result} ({duration:.1f}s)\n")
         print(f"Session history saved to {file_path}.")
+        if rotate:
+            _prune_history_dirs(HISTORY_DIR)
     except (OSError, PermissionError) as exc:
         print(f"Could not save session history ({exc}).")
     return file_path
 
 
+def _prune_history_dirs(history_root: str, keep: int = HISTORY_MAX_FILES) -> None:
+    """Keep only the most recent date-stamped history folders to avoid unbounded growth."""
+    if keep <= 0:
+        return
+    try:
+        candidates = []
+        for name in os.listdir(history_root):
+            path = os.path.join(history_root, name)
+            if os.path.isdir(path) and name.isdigit():
+                candidates.append((name, path))
+        candidates.sort(reverse=True)  # YYYYMMDD lexicographic matches chronological
+        for _, path in candidates[keep:]:
+            try:
+                shutil.rmtree(path)
+            except OSError:
+                continue
+    except OSError:
+        return
+
+
 def load_session_history_from_file(file_path: Optional[str] = None, limit: int = 100) -> List[HistoryEntry]:
-    file_path = file_path or HISTORY_FILE
+    global HISTORY_FILE
+    if file_path:
+        resolved_path = file_path
+    else:
+        resolved_path = _latest_history_file()
+        if not resolved_path:
+            resolved_path = _ensure_today_history_file()
+        HISTORY_FILE = resolved_path
+    file_path = resolved_path
     if SAFE_MODE:
         return []
     entries: List[HistoryEntry] = []
@@ -451,6 +485,40 @@ def load_session_history_from_file(file_path: Optional[str] = None, limit: int =
         result = result_part
         entries.append((diff, result, ts_part, duration))
     return entries
+
+
+def _latest_history_file() -> Optional[str]:
+    """Find the most recent history file under dated folders; fallback to root file."""
+    try:
+        dated_dirs = []
+        for name in os.listdir(HISTORY_DIR):
+            path = os.path.join(HISTORY_DIR, name)
+            if os.path.isdir(path) and name.isdigit():
+                dated_dirs.append(name)
+        if dated_dirs:
+            dated_dirs.sort(reverse=True)
+            for name in dated_dirs:
+                candidate = os.path.join(HISTORY_DIR, name, "session_history.log")
+                if os.path.isfile(candidate):
+                    return candidate
+    except OSError:
+        pass
+    legacy = os.path.join(HISTORY_DIR, "session_history.log")
+    return legacy if os.path.isfile(legacy) else None
+
+
+def _ensure_today_history_file() -> str:
+    """Ensure today's history file exists and return its path."""
+    today_dir = os.path.join(HISTORY_DIR, datetime.now().strftime("%Y%m%d"))
+    os.makedirs(today_dir, exist_ok=True)
+    path = os.path.join(today_dir, "session_history.log")
+    if not os.path.exists(path):
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write("")
+        except OSError:
+            pass
+    return path
 
 
 def maybe_clear_history_file(file_path: Optional[str] = None) -> None:
