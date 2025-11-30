@@ -130,13 +130,16 @@ class GameSession:
             self.history = [(d, r, ts) for d, r, ts, _ in loaded_history]
         self.last_history_path: str = game.HISTORY_FILE
 
-    def set_difficulty(self, level: str, personality: str = "standard") -> None:
+    def set_difficulty(self, level: str, personality: str = "standard", use_humanish: bool = True) -> None:
         self.difficulty_key = level
         self.personality = personality
         if level == "Easy":
             self.ai_move_fn = game.ai_move_easy
         elif level == "Normal":
-            self.ai_move_fn = game.NORMAL_PERSONALITIES.get(personality, game.ai_move_normal)
+            if use_humanish:
+                self.ai_move_fn = lambda b: game.ai_move_normal_humanish(b, game.DEFAULT_ERROR_RATE)
+            else:
+                self.ai_move_fn = game.NORMAL_PERSONALITIES.get(personality, game.ai_move_normal)
         else:
             self.ai_move_fn = game.ai_move_hard
 
@@ -174,6 +177,8 @@ class TicTacToeGUI:
         self.show_heatmap = tk.BooleanVar(value=settings.get("show_heatmap", False))
         self.show_commentary = tk.BooleanVar(value=settings.get("show_commentary", False))
         self.show_intro_overlay = tk.BooleanVar(value=settings.get("show_intro_overlay", True))
+        self.show_whats_new = tk.BooleanVar(value=settings.get("show_whats_new", True))
+        self.humanish_normal = tk.BooleanVar(value=settings.get("humanish_normal", True))
         self.ai_waiting = False
         self.palette = self._resolve_palette(self.theme_var.get())
         self.fonts = dict(FONTS_LARGE if self.large_fonts.get() else FONTS_DEFAULT)
@@ -202,6 +207,8 @@ class TicTacToeGUI:
         self.badge_var = tk.StringVar(value="")
         self.streaks = {diff: 0 for diff in game.DIFFICULTIES}
         self.round_start_time = None
+        self.sandbox_mode = False
+        self.sandbox_board = [" "] * 9
         self.badges = game.load_badges()
         self.badge_var = tk.StringVar(value="")
         self.streaks = {diff: 0 for diff in game.DIFFICULTIES}
@@ -218,6 +225,7 @@ class TicTacToeGUI:
         self.auto_start = tk.BooleanVar(value=settings["auto_start"])
         self.rotate_logs = tk.BooleanVar(value=settings["rotate_logs"])
         self.show_heatmap = tk.BooleanVar(value=settings.get("show_heatmap", False))
+        self.humanish_normal = tk.BooleanVar(value=settings.get("humanish_normal", True))
         self.pending_ai_id: Optional[str] = None
         self.last_move_idx: Optional[int] = None
         self.hint_highlight: Optional[int] = None
@@ -233,6 +241,7 @@ class TicTacToeGUI:
         self._build_menu()
         self._apply_compact_layout()
         self._maybe_show_intro_overlay()
+        self._maybe_show_whats_new()
 
     def _color(self, key: str) -> str:
         return self.palette[key]
@@ -416,6 +425,8 @@ class TicTacToeGUI:
             "show_commentary": False,
             "compact_sidebar": False,
             "show_intro_overlay": True,
+            "show_whats_new": True,
+            "humanish_normal": True,
         }
         data = None
         try:
@@ -464,6 +475,8 @@ class TicTacToeGUI:
             "show_commentary": bool(data.get("show_commentary", defaults["show_commentary"])),
             "compact_sidebar": bool(data.get("compact_sidebar", defaults["compact_sidebar"])),
             "show_intro_overlay": bool(data.get("show_intro_overlay", defaults["show_intro_overlay"])),
+            "show_whats_new": bool(data.get("show_whats_new", defaults["show_whats_new"])),
+            "humanish_normal": bool(data.get("humanish_normal", defaults["humanish_normal"])),
         }
 
     def _save_settings(self) -> None:
@@ -480,6 +493,8 @@ class TicTacToeGUI:
             "show_commentary": self.show_commentary.get(),
             "compact_sidebar": self.compact_sidebar.get(),
             "show_intro_overlay": self.show_intro_overlay.get(),
+            "show_whats_new": self.show_whats_new.get(),
+            "humanish_normal": self.humanish_normal.get(),
         }
         try:
             # write backup first
@@ -604,6 +619,19 @@ class TicTacToeGUI:
         if not self.show_intro_overlay.get():
             return
         self._show_intro_overlay(force=True)
+
+    def _maybe_show_whats_new(self) -> None:
+        if not self.show_whats_new.get():
+            return
+        msg = (
+            "- New clean-slate reset for badges/history\n"
+            "- Human-like Normal AI on by default\n"
+            "- Winning line highlight and auto-save logs\n"
+            "- Batch self-test and perf dashboard via CLI"
+        )
+        messagebox.showinfo("What's new", msg)
+        self.show_whats_new.set(False)
+        self._save_settings()
 
     def _show_intro_overlay(self, force: bool = False) -> None:
         if not force and not self.show_intro_overlay.get():
@@ -749,6 +777,19 @@ class TicTacToeGUI:
                 self._set_status_icon("ai")
                 self.pending_ai_id = self.root.after(50, self._ai_move)
 
+    def _toggle_sandbox(self) -> None:
+        self.sandbox_mode = not getattr(self, "sandbox_mode", False)
+        if self.sandbox_mode:
+            self.sandbox_btn.configure(text="Exit Sandbox")
+            self.status_var.set("Sandbox: click cells to cycle through X/O/empty. Use Hint for AI best move.")
+            self.sandbox_board = [" "] * 9
+            self._refresh_board()
+        else:
+            self.sandbox_btn.configure(text="Sandbox")
+            self.sandbox_board = [" "] * 9
+            self.status_var.set("Sandbox exited. Start a game.")
+            self.start_new_game()
+
     def _set_status_icon(self, mode: str) -> None:
         if not hasattr(self, "status_icon"):
             return
@@ -822,6 +863,8 @@ class TicTacToeGUI:
         self.rematch_button.grid(row=0, column=2, padx=(4, 0))
         self.pause_ai_btn = ttk.Button(btn_bar, text="Pause AI", command=self._toggle_ai_pause_main, style="Panel.TButton")
         self.pause_ai_btn.grid(row=0, column=3, padx=(4, 0))
+        self.sandbox_btn = ttk.Button(btn_bar, text="Sandbox", command=self._toggle_sandbox, style="Panel.TButton")
+        self.sandbox_btn.grid(row=0, column=4, padx=(4, 0))
 
         match_row = ttk.Frame(top, style="App.TFrame")
         match_row.grid(row=1, column=0, columnspan=6, sticky="ew", pady=(6, 0))
@@ -1028,8 +1071,12 @@ class TicTacToeGUI:
         level = self.diff_var.get()
         personality = self.personality_var.get() if level == "Normal" else "standard"
         self.personality_menu.state(["!disabled"] if level == "Normal" else ["disabled"])
-        self.session.set_difficulty(level, personality)
+        self.session.set_difficulty(level, personality, use_humanish=self.humanish_normal.get())
         self.status_var.set(f"Selected {self.session.label()}. Start a game.")
+        if level != "Normal":
+            self.sandbox_btn.configure(state="disabled")
+        else:
+            self.sandbox_btn.configure(state="normal")
 
     def _reset_scoreboard(self) -> None:
         if messagebox.askyesno("Reset scoreboard", "Reset all scores to zero?"):
@@ -1144,6 +1191,8 @@ class TicTacToeGUI:
         if self.pending_ai_id:
             self.root.after_cancel(self.pending_ai_id)
             self.pending_ai_id = None
+        self.sandbox_mode = False
+        self.sandbox_btn.configure(text="Sandbox")
         self.last_move_idx = None
         self.session.reset_board()
         self._apply_selection()
@@ -1165,6 +1214,15 @@ class TicTacToeGUI:
         self._new_match()
 
     def _handle_player_move(self, idx: int) -> None:
+        if self.sandbox_mode:
+            current = self.sandbox_board[idx]
+            new_val = "X" if current == " " else "O" if current == "X" else " "
+            self.sandbox_board[idx] = new_val
+            # reflect on board buttons
+            self.session.board = self.sandbox_board[:]
+            self._refresh_board()
+            return
+
         if self.session.game_over or self.session.board[idx] != " " or not getattr(self, "player_turn", True) or getattr(self, "match_over", False):
             return
 
@@ -1210,6 +1268,8 @@ class TicTacToeGUI:
         self._refresh_move_log()
         self._refresh_board()
         self._flash_ai_move(ai_idx)
+        if self.show_commentary.get():
+            self.status_var.set(self._commentary_for_ai_move(ai_idx))
         self.pending_ai_id = None
         self.last_move_idx = None
         winner = game.check_winner(self.session.board)
@@ -1293,6 +1353,21 @@ class TicTacToeGUI:
                 self.status_var.set(" | ".join(msg_parts))
             self._refresh_scoreboard()
 
+    def _commentary_for_ai_move(self, idx: int) -> str:
+        board = self.session.board
+        # If AI just won
+        if game.find_winning_move([c if i != idx else " " for i, c in enumerate(board)], "O") == idx:
+            return "AI saw a winning line."
+        # If AI blocked
+        if game.find_winning_move([c if i != idx else " " for i, c in enumerate(board)], "X") == idx:
+            return "AI blocked your threat."
+        # Preferred center/corner logic
+        if idx == 4:
+            return "AI prefers center control."
+        if idx in (0, 2, 6, 8):
+            return "AI takes a corner for flexibility."
+        return "AI picked a safe move."
+
     def _finish_round(self, winner: str) -> None:
         self.session.game_over = True
         if winner == "Draw":
@@ -1314,6 +1389,7 @@ class TicTacToeGUI:
         self.last_move_idx = None
         self._save_history_now()
         self._update_streaks_and_badges(winner, elapsed)
+        self._celebrate_win()
         if self.auto_start.get():
             if getattr(self, "match_over", False):
                 # Auto-start a fresh match when the current one is done (helps Bo1 users).
@@ -1354,6 +1430,20 @@ class TicTacToeGUI:
                     btn.configure(bg=self._color("BTN"), fg=self._color("BG"))
                 break
 
+    def _celebrate_win(self) -> None:
+        if not self.animations_enabled.get():
+            return
+        colors = [self._color("ACCENT"), self._color("BTN"), self._color("O")]
+        def _flash(count: int = 0) -> None:
+            if count >= 5:
+                self._refresh_board()
+                return
+            for row in self.buttons:
+                for btn in row:
+                    btn.configure(bg=random.choice(colors))
+            self.root.after(120, lambda: _flash(count + 1))
+        _flash()
+
     def _undo_move(self) -> None:
         if self.session.game_over:
             return
@@ -1382,9 +1472,12 @@ class TicTacToeGUI:
         self._refresh_move_log()
 
     def _show_hint(self) -> None:
-        if self.session.game_over:
-            return
-        board_copy = self.session.board[:]
+        if self.sandbox_mode:
+            board_copy = self.sandbox_board[:]
+        else:
+            if self.session.game_over:
+                return
+            board_copy = self.session.board[:]
         open_spots = [i for i, v in enumerate(board_copy) if v == " "]
         if not open_spots:
             return
