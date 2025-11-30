@@ -252,11 +252,35 @@ def parse_args(argv=None) -> argparse.Namespace:
         choices=("X", "O", "Draw"),
         help="Exit non-zero unless the aggregate winner matches (ties become Draw).",
     )
+    parser.add_argument(
+        "--bench",
+        type=int,
+        default=0,
+        help="Run a quick benchmark for N rounds (Hard vs Hard, safe-mode, no persistence).",
+    )
     return parser.parse_args(argv)
 
 
 def main(argv=None) -> None:
     args = parse_args(argv)
+    if args.bench and args.bench > 0:
+        import time
+
+        rounds = max(1, args.bench)
+        start = time.perf_counter()
+        summary = _run_headless_ai_vs_ai(
+            "Hard",
+            "Hard",
+            rounds=rounds,
+            delay_sec=0.0,
+            scoreboard_file="",
+            safe_mode=True,
+        )
+        elapsed = time.perf_counter() - start
+        rps = rounds / elapsed if elapsed else float("inf")
+        print(f"Benchmark: {rounds} rounds in {elapsed:.2f}s ({rps:.1f} rounds/sec).")
+        return
+
     if args.ai_x and args.ai_o:
         scoreboard_file = args.scoreboard_file or AI_SCOREBOARD_FILE
         summary = _run_headless_ai_vs_ai(
