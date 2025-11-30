@@ -6,6 +6,7 @@ import os
 import random
 import sys
 import time
+import shutil
 from datetime import datetime
 from typing import Callable, Dict, List, Optional, Tuple
 from . import scoreboard
@@ -403,40 +404,40 @@ def save_session_history_to_file(history: List[HistoryEntry], file_path: Optiona
     if not history:
         print("No session history to save.")
         return file_path
+    dir_name = os.path.dirname(file_path) or "."
     if rotate:
         ts = datetime.now().strftime("%Y%m%d")
-        base, ext = os.path.splitext(file_path)
-        file_path = f"{base}_{ts}{ext or '.log'}"
-    dir_name = os.path.dirname(file_path) or "."
-    os.makedirs(dir_name, exist_ok=True)
+        dir_name = os.path.join(HISTORY_DIR, ts)
+        os.makedirs(dir_name, exist_ok=True)
+        file_path = os.path.join(dir_name, "session_history.log")
+    else:
+        os.makedirs(dir_name, exist_ok=True)
     try:
         with open(file_path, "a", encoding="utf-8") as f:
             for diff, result, ts, duration in history:
                 f.write(f"{ts} - {diff}: {result} ({duration:.1f}s)\n")
         print(f"Session history saved to {file_path}.")
         if rotate:
-            _prune_history_logs(dir_name, os.path.basename(base), ext or ".log")
+            _prune_history_dirs(HISTORY_DIR)
     except (OSError, PermissionError) as exc:
         print(f"Could not save session history ({exc}).")
     return file_path
 
 
-def _prune_history_logs(dir_name: str, base_name: str, ext: str, keep: int = HISTORY_MAX_FILES) -> None:
-    """Keep only the most recent history files to avoid unbounded growth."""
+def _prune_history_dirs(history_root: str, keep: int = HISTORY_MAX_FILES) -> None:
+    """Keep only the most recent date-stamped history folders to avoid unbounded growth."""
     if keep <= 0:
         return
     try:
         candidates = []
-        for name in os.listdir(dir_name):
-            if not name.startswith(f"{base_name}_") or not name.endswith(ext):
-                continue
-            full_path = os.path.join(dir_name, name)
-            if os.path.isfile(full_path):
-                candidates.append((os.path.getmtime(full_path), full_path))
-        candidates.sort(reverse=True)  # newest first
+        for name in os.listdir(history_root):
+            path = os.path.join(history_root, name)
+            if os.path.isdir(path) and name.isdigit():
+                candidates.append((name, path))
+        candidates.sort(reverse=True)  # YYYYMMDD lexicographic matches chronological
         for _, path in candidates[keep:]:
             try:
-                os.remove(path)
+                shutil.rmtree(path)
             except OSError:
                 continue
     except OSError:
