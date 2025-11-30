@@ -28,6 +28,7 @@
   "label.quick_stats": "Estadísticas rápidas",
   "label.recent_results": "Resultados recientes",
   "label.shortcuts": "Atajos",
+  "label.moves_log": "Movimientos",
 
   "button.new_game": "Nueva partida",
   "button.new_match": "Nuevo enfrentamiento",
@@ -45,5 +46,14 @@
 
   "crash.title": "Informe de fallos",
   "crash.empty": "No se encontró traza de error.",
-  "crash.tip": "Revisa el registro abajo; ningún dato sale de tu equipo."
+  "crash.tip": "Revisa el registro abajo; ningún dato sale de tu equipo.",
+
+  "score.total_games": "Partidas totales",
+  "score.x_wins": "Victorias X",
+  "score.o_wins": "Victorias O",
+  "score.draws": "Empates",
+  "score.match_prefix": "Partida",
+  "score.badges": "Insignias",
+  "score.recent": "Reciente",
+  "score.recent_none": "ninguno"
 }

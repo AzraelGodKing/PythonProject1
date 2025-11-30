@@ -28,6 +28,7 @@
   "label.quick_stats": "Quick Stats",
   "label.recent_results": "Recent Results",
   "label.shortcuts": "Shortcuts",
+  "label.moves_log": "Moves",
 
   "button.new_game": "New Game",
   "button.new_match": "New Match",
@@ -45,5 +46,14 @@
 
   "crash.title": "Crash Report",
   "crash.empty": "No crash trace found.",
-  "crash.tip": "Review the log below; no data leaves your machine."
+  "crash.tip": "Review the log below; no data leaves your machine.",
+
+  "score.total_games": "Total games",
+  "score.x_wins": "X wins",
+  "score.o_wins": "O wins",
+  "score.draws": "Draws",
+  "score.match_prefix": "Match",
+  "score.badges": "Badges",
+  "score.recent": "Recent",
+  "score.recent_none": "none"
 }
