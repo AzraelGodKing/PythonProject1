@@ -1,0 +1,13 @@
+{
+  "menu.game": "Game",
+  "menu.view": "View",
+  "menu.exit": "Exit",
+  "menu.whats_new": "What's New",
+  "menu.change_log": "Change Log",
+  "menu.crash_report": "Crash Report",
+  "status.choose": "Choose a difficulty and start a game.",
+  "options.language": "Language",
+  "crash.title": "Crash Report",
+  "crash.empty": "No crash trace found.",
+  "crash.tip": "Review the log below; no data leaves your machine."
+}

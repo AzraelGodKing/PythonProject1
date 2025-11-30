@@ -64,6 +64,20 @@ def show_options_popup(gui) -> None:
     theme_box.bind("<<ComboboxSelected>>", gui._on_theme_change)
     row += 1
 
+    ttk.Label(frame, text=gui._t("options.language", "Language"), style="Title.TLabel").grid(row=row, column=0, columnspan=2, sticky="w", pady=(10, 2))
+    row += 1
+    lang_box = ttk.Combobox(
+        frame,
+        textvariable=tk.StringVar(value=gui.language),
+        values=gui.available_languages,
+        state="readonly",
+        style="App.TCombobox",
+        width=20,
+    )
+    lang_box.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(0, 8))
+    lang_box.bind("<<ComboboxSelected>>", lambda e: gui._on_language_change(lang_box.get()))
+    row += 1
+
     swatch = tk.Canvas(frame, height=20, bg=gui._color("PANEL"), highlightthickness=0)
     swatch.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(0, 8))
     gui._update_theme_swatch(swatch)

@@ -12,6 +12,7 @@ import atexit
 import math
 import time
 import random
+import glob
 from datetime import datetime
 from typing import Optional
 from tkinter import messagebox, ttk
@@ -26,6 +27,7 @@ USER_EVENT_LOG = os.path.join(LOG_DIR, "user.log")
 SETTINGS_FILE = "gui_settings.json"
 SETTINGS_BACKUP = os.path.join(LOG_DIR, "gui_settings.json.bak")
 CHANGELOG_FILE = os.path.join(os.path.dirname(__file__), "CHANGELOG.md")
+LOCALES_DIR = os.path.join(os.path.dirname(__file__), "locales")
 
 PALETTE_DEFAULT = {
     "BG": "#0f172a",
@@ -164,6 +166,9 @@ class GameSession:
 
 class TicTacToeGUI:
     def __init__(self, root: tk.Tk) -> None:
+        self.available_languages = self._discover_languages()
+        self.translations = {}
+        self.language = "en"
         self.root = root
         self.root.title("Tic-Tac-Toe")
         self.root.geometry("1100x800")
@@ -171,6 +176,8 @@ class TicTacToeGUI:
         self.settings_path = os.environ.get("GUI_SETTINGS_PATH", SETTINGS_FILE)
         self.logger = self._init_logger()
         settings = self._load_settings()
+        self.language = settings.get("language", "en")
+        self._load_translations(self.language)
         self.large_fonts = tk.BooleanVar(value=settings["large_fonts"])
         self.theme_var = tk.StringVar(value=settings["theme"])
         self.animations_enabled = tk.BooleanVar(value=settings["animations"])
@@ -216,7 +223,7 @@ class TicTacToeGUI:
         self.streaks = {diff: 0 for diff in game.DIFFICULTIES}
         self.round_start_time = None
 
-        self.status_var = tk.StringVar(value="Choose a difficulty and start a game.")
+        self.status_var = tk.StringVar(value=self._t("status.choose", "Choose a difficulty and start a game."))
         self.score_var = tk.StringVar()
         self.match_score_var = tk.StringVar()
         self.history_var = tk.StringVar(value="Recent: none")
@@ -250,6 +257,28 @@ class TicTacToeGUI:
 
     def _font(self, key: str):
         return self.fonts[key]
+
+    def _discover_languages(self) -> list[str]:
+        langs = set()
+        if os.path.isdir(LOCALES_DIR):
+            for path in glob.glob(os.path.join(LOCALES_DIR, "*.json")):
+                name = os.path.splitext(os.path.basename(path))[0]
+                langs.add(name)
+        langs.add("en")
+        return sorted(langs)
+
+    def _load_translations(self, lang: str) -> None:
+        path = os.path.join(LOCALES_DIR, f"{lang}.json")
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                self.translations = json.load(f)
+            self.language = lang
+        except (OSError, json.JSONDecodeError):
+            self.translations = {}
+            self.language = "en"
+
+    def _t(self, key: str, default: str) -> str:
+        return str(self.translations.get(key, default))
 
     def _resolve_palette(self, theme: str) -> dict:
         if theme == "high_contrast":
@@ -356,6 +385,36 @@ class TicTacToeGUI:
         text.configure(state="disabled")
         ttk.Button(popup, text="Close", style="Panel.TButton", command=popup.destroy).pack(pady=(0, 10))
 
+    def _show_crash_report(self) -> None:
+        log_path = os.path.join(LOG_DIR, "app.log")
+        if not os.path.exists(log_path):
+            messagebox.showinfo(self._t("crash.title", "Crash Report"), self._t("crash.empty", "No crash trace found."))
+            return
+        try:
+            with open(log_path, "r", encoding="utf-8") as f:
+                lines = f.read().splitlines()
+        except OSError:
+            messagebox.showinfo(self._t("crash.title", "Crash Report"), self._t("crash.empty", "No crash trace found."))
+            return
+        traceback_lines = []
+        for line in reversed(lines):
+            traceback_lines.append(line)
+            if line.startswith("Traceback"):
+                break
+        traceback_lines.reverse()
+        if not traceback_lines:
+            messagebox.showinfo(self._t("crash.title", "Crash Report"), self._t("crash.empty", "No crash trace found."))
+            return
+        popup = tk.Toplevel(self.root)
+        popup.title(self._t("crash.title", "Crash Report"))
+        popup.configure(bg=self._color("BG"))
+        tk.Label(popup, text=self._t("crash.tip", "Review the log below; no data leaves your machine."), bg=self._color("BG"), fg=self._color("TEXT"), wraplength=520, justify="left").pack(anchor="w", padx=10, pady=(8, 4))
+        text = tk.Text(popup, width=70, height=14, bg=self._color("PANEL"), fg=self._color("TEXT"), relief="flat")
+        text.pack(fill="both", expand=True, padx=10, pady=10)
+        text.insert("end", "\n".join(traceback_lines))
+        text.configure(state="disabled")
+        ttk.Button(popup, text="Close", style="Panel.TButton", command=popup.destroy).pack(pady=(0, 10))
+
     def _build_layout(self) -> None:
         # Scrollable container so all controls remain reachable on smaller screens.
         self.root.columnconfigure(0, weight=1)
@@ -412,22 +471,23 @@ class TicTacToeGUI:
     def _build_menu(self) -> None:
         menubar = tk.Menu(self.root)
         game_menu = tk.Menu(menubar, tearoff=0)
-        game_menu.add_command(label="New Game", command=self.start_new_game, accelerator="Ctrl+N")
-        game_menu.add_command(label="New Match", command=self._new_match)
+        game_menu.add_command(label=self._t("menu.new_game", "New Game"), command=self.start_new_game, accelerator="Ctrl+N")
+        game_menu.add_command(label=self._t("menu.new_match", "New Match"), command=self._new_match)
         game_menu.add_separator()
-        game_menu.add_command(label="AI vs AI Mode", command=self._show_ai_vs_ai_popup)
+        game_menu.add_command(label=self._t("menu.ai_mode", "AI vs AI Mode"), command=self._show_ai_vs_ai_popup)
         game_menu.add_separator()
-        game_menu.add_command(label="Exit", command=self.root.quit)
-        menubar.add_cascade(label="Game", menu=game_menu)
+        game_menu.add_command(label=self._t("menu.exit", "Exit"), command=self.root.quit)
+        menubar.add_cascade(label=self._t("menu.game", "Game"), menu=game_menu)
 
         view_menu = tk.Menu(menubar, tearoff=0)
-        view_menu.add_command(label="Achievements", command=self._show_achievements_popup)
-        view_menu.add_command(label="History", command=self._view_history_popup)
-        view_menu.add_command(label="Welcome Overlay", command=lambda: self._show_intro_overlay(force=True))
-        view_menu.add_command(label="What's New", command=self._show_whats_new_popup)
-        view_menu.add_command(label="Change Log", command=self._show_change_log_popup)
-        view_menu.add_command(label="Options", command=self._show_options_popup)
-        menubar.add_cascade(label="View", menu=view_menu)
+        view_menu.add_command(label=self._t("menu.achievements", "Achievements"), command=self._show_achievements_popup)
+        view_menu.add_command(label=self._t("menu.history", "History"), command=self._view_history_popup)
+        view_menu.add_command(label=self._t("menu.welcome_overlay", "Welcome Overlay"), command=lambda: self._show_intro_overlay(force=True))
+        view_menu.add_command(label=self._t("menu.whats_new", "What's New"), command=self._show_whats_new_popup)
+        view_menu.add_command(label=self._t("menu.change_log", "Change Log"), command=self._show_change_log_popup)
+        view_menu.add_command(label=self._t("menu.crash_report", "Crash Report"), command=self._show_crash_report)
+        view_menu.add_command(label=self._t("menu.options", "Options"), command=self._show_options_popup)
+        menubar.add_cascade(label=self._t("menu.view", "View"), menu=view_menu)
 
         self.root.config(menu=menubar)
 
@@ -447,6 +507,7 @@ class TicTacToeGUI:
             "show_intro_overlay": True,
             "show_whats_new": True,
             "humanish_normal": True,
+            "language": "en",
         }
         data = None
         try:
@@ -497,6 +558,7 @@ class TicTacToeGUI:
             "show_intro_overlay": bool(data.get("show_intro_overlay", defaults["show_intro_overlay"])),
             "show_whats_new": bool(data.get("show_whats_new", defaults["show_whats_new"])),
             "humanish_normal": bool(data.get("humanish_normal", defaults["humanish_normal"])),
+            "language": data.get("language", defaults["language"]),
         }
 
     def _save_settings(self) -> None:
@@ -515,6 +577,7 @@ class TicTacToeGUI:
             "show_intro_overlay": self.show_intro_overlay.get(),
             "show_whats_new": self.show_whats_new.get(),
             "humanish_normal": self.humanish_normal.get(),
+            "language": self.language,
         }
         try:
             # write backup first
@@ -837,6 +900,11 @@ class TicTacToeGUI:
                         break
             if swatch:
                 self._update_theme_swatch(swatch)
+    def _on_language_change(self, lang: str) -> None:
+        self._load_translations(lang)
+        self._build_menu()
+        self.status_var.set(self._t("status.choose", "Choose a difficulty and start a game."))
+        self._save_settings()
 
     def _update_theme_swatch(self, canvas: tk.Canvas) -> None:
         canvas.delete("all")

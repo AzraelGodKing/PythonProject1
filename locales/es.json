@@ -1,0 +1,13 @@
+{
+  "menu.game": "Juego",
+  "menu.view": "Ver",
+  "menu.exit": "Salir",
+  "menu.whats_new": "Novedades",
+  "menu.change_log": "Registro de cambios",
+  "menu.crash_report": "Informe de fallos",
+  "status.choose": "Elige dificultad y empieza una partida.",
+  "options.language": "Idioma",
+  "crash.title": "Informe de fallos",
+  "crash.empty": "No se encontró traza de error.",
+  "crash.tip": "Revisa el registro abajo; ningún dato sale de tu equipo."
+}

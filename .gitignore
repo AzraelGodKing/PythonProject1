@@ -11,6 +11,8 @@
 !README.md
 !pyproject.toml
 !CHANGELOG.md
+!locales/
+!locales/**
 
 !tictactoe/
 !tictactoe/**
