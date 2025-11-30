@@ -8,6 +8,9 @@ v0.7
 - Clean slate reset for badges/history
 - What's New / Change Log in View
 
+v0.8
+- Bug fixes
+
 v0.6
 - Replay export/load
 - Badges (streak / fastest)

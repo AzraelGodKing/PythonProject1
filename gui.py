@@ -11,6 +11,7 @@ import tkinter as tk
 import atexit
 import math
 import time
+import random
 from datetime import datetime
 from typing import Optional
 from tkinter import messagebox, ttk
