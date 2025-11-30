@@ -562,6 +562,9 @@ class TicTacToeGUI:
         ]:
             view_menu.add_command(label=label, command=cmd)
         view_menu.add_separator()
+        view_menu.add_command(label=self._t("button.clean_slate", "Clean slate"), command=self._clean_slate)
+        view_menu.add_command(label=self._t("button.ai_mode", "AI vs AI Mode"), command=self._show_ai_vs_ai_popup)
+        view_menu.add_separator()
         view_menu.add_command(label=self._t("menu.options", "Options"), command=self._show_options_popup)
         menubar.add_cascade(label=self._t("menu.view", "View"), menu=view_menu)
 
@@ -1202,10 +1205,13 @@ class TicTacToeGUI:
         records = ttk.Frame(info, style="Panel.TFrame")
         records.grid(row=15, column=0, sticky="ew", pady=(6, 2))
         records.columnconfigure((0, 1), weight=1)
-        self.clean_slate_btn = ttk.Button(records, text=self._t("button.clean_slate", "Clean slate"), style="Panel.TButton", command=self._clean_slate)
-        self.clean_slate_btn.grid(row=0, column=0, sticky="ew", padx=2, pady=(2, 2))
-        self.ai_mode_btn = ttk.Button(records, text=self._t("button.ai_mode", "AI vs AI Mode"), style="Panel.TButton", command=self._show_ai_vs_ai_popup)
-        self.ai_mode_btn.grid(row=0, column=1, sticky="ew", padx=2, pady=(2, 2))
+        ttk.Label(
+            records,
+            text=self._t("menu.view", "View") + " ▸",
+            style="Muted.TLabel",
+            anchor="w",
+            padding=(4, 2),
+        ).grid(row=0, column=0, columnspan=2, sticky="w")
 
     def _on_diff_change(self, _event=None) -> None:
         self._apply_selection()
