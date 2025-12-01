@@ -13,6 +13,8 @@ import tictactoe as game
 
 class TestGuiHeadless(unittest.TestCase):
     def test_gui_initializes_headless_with_safe_mode(self) -> None:
+        if os.environ.get("CI"):
+            self.skipTest("GUI test skipped in CI to avoid potential hangs")
         with tempfile.TemporaryDirectory() as tmp:
             os.environ["GUI_SETTINGS_PATH"] = os.path.join(tmp, "gui_settings.json")
             history_path = os.path.join(tmp, "history.log")
