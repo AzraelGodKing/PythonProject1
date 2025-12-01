@@ -123,9 +123,9 @@ FONTS_LARGE = {
 class GameSession:
     def __init__(self) -> None:
         self.scoreboard = game.load_scoreboard()
-        self.difficulty_key = "Easy"
+        self.difficulty_key = "Normal"
         self.personality = "standard"
-        self.ai_move_fn = game.ai_move_easy
+        self.ai_move_fn = lambda b: game.ai_move_normal_humanish(b, game.DEFAULT_ERROR_RATE)
         self.board = [" "] * 9
         self.game_over = False
         self.history = []
@@ -566,6 +566,7 @@ class TicTacToeGUI:
         view_menu.add_command(label=self._t("button.ai_mode", "AI vs AI Mode"), command=self._show_ai_vs_ai_popup)
         menubar.add_cascade(label=self._t("menu.view", "View"), menu=view_menu)
 
+        menubar.add_command(label="Sandbox Mode", command=self._menu_sandbox)
         menubar.add_command(label=self._t("menu.options", "Options"), command=self._show_options_popup)
 
         self.root.config(menu=menubar)
@@ -984,6 +985,15 @@ class TicTacToeGUI:
             self.status_var.set("Sandbox exited. Start a game.")
             self.start_new_game()
 
+    def _menu_sandbox(self) -> None:
+        if self.session.difficulty_key != "Normal":
+            messagebox.showinfo("Sandbox Mode", "Sandbox Mode is available on Normal difficulty only.")
+            return
+        if not getattr(self, "sandbox_mode", False):
+            self._toggle_sandbox()
+        else:
+            self._toggle_sandbox()
+
     def _set_status_icon(self, mode: str) -> None:
         if not hasattr(self, "status_icon"):
             return
@@ -1029,7 +1039,7 @@ class TicTacToeGUI:
 
         self.diff_label = ttk.Label(top, text=self._t("label.difficulty", "Difficulty:"), style="App.TLabel", font=self._font("title"))
         self.diff_label.grid(row=0, column=0, sticky="w", padx=(0, 4))
-        self.diff_var = tk.StringVar(value=self._t("difficulty.easy", "Easy"))
+        self.diff_var = tk.StringVar(value=self._t("difficulty.normal", "Normal"))
         diff_menu = ttk.Combobox(
             top,
             textvariable=self.diff_var,
