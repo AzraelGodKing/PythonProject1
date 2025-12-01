@@ -13,6 +13,7 @@ import math
 import time
 import random
 import glob
+from pathlib import Path
 from datetime import datetime
 from typing import Optional
 from tkinter import messagebox, ttk
@@ -22,13 +23,13 @@ import ai_vs_ai
 import tictactoe as game
 
 
-LOG_DIR = os.path.join("data", "logs")
+LOG_DIR = os.path.join(game.DATA_DIR, "logs")
 USER_EVENT_LOG = os.path.join(LOG_DIR, "user.log")
 SETTINGS_FILE = "gui_settings.json"
 SETTINGS_BACKUP = os.path.join(LOG_DIR, "gui_settings.json.bak")
-BASE_DIR = os.path.dirname(__file__)
-CHANGELOG_FILE = os.path.join(BASE_DIR, "CHANGELOG.md")
-LOCALES_DIR = os.path.join(BASE_DIR, "locales")
+BASE_DIR = Path(__file__).resolve().parent
+CHANGELOG_FILE = os.fspath(BASE_DIR / "CHANGELOG.md")
+LOCALES_DIR = os.fspath(BASE_DIR / "locales")
 
 PALETTE_DEFAULT = {
     "BG": "#0f172a",
@@ -887,7 +888,8 @@ class TicTacToeGUI:
 
     def _handle_exception(self, exc_type, exc_value, exc_traceback) -> None:
         self.logger.exception("Unhandled exception", exc_info=(exc_type, exc_value, exc_traceback))
-        messagebox.showerror("Error", "An unexpected error occurred. See data/logs/app.log for details.")
+        log_path = os.path.join(LOG_DIR, "app.log")
+        messagebox.showerror("Error", f"An unexpected error occurred. See {log_path} for details.")
 
     def _copy_diagnostics(self) -> None:
         log_path = os.path.join(LOG_DIR, "app.log")

@@ -10,7 +10,7 @@ from typing import Callable, Dict, List, Tuple
 
 import tictactoe as module
 
-AI_SCOREBOARD_FILE = os.path.join("data", "scoreboard", "ai_vs_ai.json")
+AI_SCOREBOARD_FILE = os.path.join(module.DATA_DIR, "scoreboard", "ai_vs_ai.json")
 AI_SCOREBOARD_BACKUP = AI_SCOREBOARD_FILE + ".bak"
 
 AI_PLAYERS: Dict[str, Callable[[List[str]], int]] = {

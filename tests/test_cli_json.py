@@ -1,7 +1,13 @@
 import io
 import json
+import os
+import sys
 import unittest
 from contextlib import redirect_stdout
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent / "a tic-tac-toe game"
+sys.path.insert(0, os.fspath(PROJECT_ROOT))
 
 import ai_vs_ai
 

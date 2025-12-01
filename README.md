@@ -1,6 +1,6 @@
 # Tic-Tac-Toe Suite
 
-A polished Python tic-tac-toe collection that runs both in the terminal and with a Tkinter windowed interface. The project includes multiple AI personalities, persistent scorekeeping, and configurable settings so you can explore strategies, demo the game, or just play a quick match without any external dependencies.
+A polished Python tic-tac-toe collection that runs both in the terminal and with a Tkinter windowed interface. The project includes multiple AI personalities, persistent scorekeeping, and configurable settings so you can explore strategies, demo the game, or just play a quick match without any external dependencies. All runnable files and assets now live in the `a tic-tac-toe game/` folder to keep the project organized.
 
 ## Highlights
 - **Game modes:** Human vs AI in the CLI or GUI, plus an AI-vs-AI simulator with its own scoreboard.
@@ -15,24 +15,24 @@ A polished Python tic-tac-toe collection that runs both in the terminal and with
    python -m venv .venv
    source .venv/bin/activate  # On Windows: .venv\\Scripts\\activate
    ```
-3. Launch commands from the repository root so assets and logs resolve correctly.
+3. Run commands from the repository root; the code and assets live under `a tic-tac-toe game/`.
 
 ## Running the games
 - **CLI:**
   ```bash
-  python tic-tac-toe.py
+  python "a tic-tac-toe game/tic-tac-toe.py"
   ```
   Guides you through move input and records results in the main scoreboard.
 
 - **GUI:**
   ```bash
-  python gui.py
+  python "a tic-tac-toe game/gui.py"
   ```
   Opens a Tkinter window with board controls, score tracking, and configurable themes (default, high-contrast, colorblind, light).
 
 - **AI vs AI:**
   ```bash
-  python ai_vs_ai.py
+  python "a tic-tac-toe game/ai_vs_ai.py"
   ```
   Choose two AI personas and a round count to watch automated play. Results save to a dedicated AI-vs-AI scoreboard.
 
@@ -41,9 +41,9 @@ A polished Python tic-tac-toe collection that runs both in the terminal and with
 - **GUI controls:** Undo and hint buttons, status panel, scoreboard, options dialog for themes, font sizing, animation and sound toggles, plus keyboard shortcuts.
 
 ## Data and persistence
-- **Scoreboards:** Stored under `data/scoreboard/` with automatic `.bak` backups.
-- **GUI settings:** Written to `gui_settings.json` (backed up at `logs/gui_settings.json.bak`). Override the location with the `GUI_SETTINGS_PATH` environment variable.
-- **Logs:** Session histories and backups live under `logs/`; the folder is tracked via `logs/.gitkeep`.
+- **Scoreboards:** Stored under `a tic-tac-toe game/data/scoreboard/` with automatic `.bak` backups.
+- **GUI settings:** Written to `gui_settings.json` (backed up at `a tic-tac-toe game/data/logs/gui_settings.json.bak`). Override the location with the `GUI_SETTINGS_PATH` environment variable.
+- **Logs:** Session histories and backups live under `a tic-tac-toe game/data/logs/`; the folder is tracked via `a tic-tac-toe game/data/logs/.gitkeep`.
 
 ## Testing
 Run the bundled smoke tests from the project root:
