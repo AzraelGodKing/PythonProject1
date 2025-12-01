@@ -816,7 +816,7 @@ class TicTacToeGUI:
         if getattr(self, "sandbox_mode", False):
             self.sandbox_btn.configure(text=self._t("button.exit_sandbox", "Exit Sandbox"))
         else:
-            self.sandbox_btn.configure(text=self._t("button.sandbox", "Sandbox"))
+            self.sandbox_btn.configure(text="Sandbox Mode")
         self.hint_btn.configure(text=self._t("button.hint", "Hint"))
         self.undo_btn.configure(text=self._t("button.undo_move", "Undo Move"))
         self.clean_slate_btn.configure(text=self._t("button.clean_slate", "Clean slate"))
@@ -1066,8 +1066,10 @@ class TicTacToeGUI:
         self.rematch_button.grid(row=0, column=2, padx=(4, 0))
         self.pause_ai_btn = ttk.Button(btn_bar, text=self._t("button.pause_ai", "Pause AI"), command=self._toggle_ai_pause_main, style="Panel.TButton")
         self.pause_ai_btn.grid(row=0, column=3, padx=(4, 0))
-        self.sandbox_btn = ttk.Button(btn_bar, text=self._t("button.sandbox", "Sandbox"), command=self._toggle_sandbox, style="Panel.TButton")
+        self.sandbox_btn = ttk.Button(btn_bar, text="Sandbox Mode", command=self._toggle_sandbox, style="Panel.TButton")
         self.sandbox_btn.grid(row=0, column=4, padx=(4, 0))
+        if self.session.difficulty_key != "Normal":
+            self.sandbox_btn.grid_remove()
 
         match_row = ttk.Frame(top, style="App.TFrame")
         match_row.grid(row=1, column=0, columnspan=6, sticky="ew", pady=(6, 0))
@@ -1296,12 +1298,10 @@ class TicTacToeGUI:
         self.status_var.set(f"{self._t('status.prefix','')}{self.session.label()}. {self._t('status.choose','Start a game.')}")
         if level != "Normal":
             self.sandbox_mode = False
-            self.sandbox_btn.configure(
-                state="disabled",
-                text=f"{self._t('button.sandbox', 'Sandbox')} ({self._t('label.difficulty', 'Difficulty')}: Normal only)",
-            )
+            self.sandbox_btn.grid_remove()
         else:
-            self.sandbox_btn.configure(state="normal", text=self._t("button.sandbox", "Sandbox"))
+            self.sandbox_btn.grid()
+            self.sandbox_btn.configure(state="normal", text="Sandbox Mode")
 
     def _reset_scoreboard(self) -> None:
         if messagebox.askyesno("Reset scoreboard", "Reset all scores to zero?"):
@@ -1419,7 +1419,11 @@ class TicTacToeGUI:
             self.root.after_cancel(self.pending_ai_id)
             self.pending_ai_id = None
         self.sandbox_mode = False
-        self.sandbox_btn.configure(text="Sandbox")
+        if self.session.difficulty_key == "Normal":
+            self.sandbox_btn.grid()
+            self.sandbox_btn.configure(text="Sandbox Mode")
+        else:
+            self.sandbox_btn.grid_remove()
         self.last_move_idx = None
         self.session.reset_board()
         self._apply_selection()
