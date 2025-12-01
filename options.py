@@ -101,11 +101,11 @@ def show_options_popup(gui) -> None:
     gui._update_theme_swatch(swatch)
     row += 1
 
-    ttk.Button(frame, text="Copy diagnostics", style="Panel.TButton", command=gui._copy_diagnostics).grid(
-        row=row, column=0, columnspan=1, sticky="ew", pady=(6, 0)
+    ttk.Button(frame, text="Copy diagnostics", style="Accent.TButton", command=gui._copy_diagnostics).grid(
+        row=row, column=0, columnspan=1, sticky="ew", pady=(8, 0)
     )
-    ttk.Button(frame, text="Close", style="Panel.TButton", command=lambda: _close_options_popup(gui, popup)).grid(
-        row=row, column=1, columnspan=1, sticky="ew", pady=(6, 0)
+    ttk.Button(frame, text="Close", style="Accent.TButton", command=lambda: _close_options_popup(gui, popup)).grid(
+        row=row, column=1, columnspan=1, sticky="ew", pady=(8, 0)
     )
 
 

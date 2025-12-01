@@ -813,7 +813,10 @@ class TicTacToeGUI:
         self.reset_btn.configure(text=self._t("button.reset_scoreboard", "Reset Scoreboard"))
         self.rematch_button.configure(text=self._t("button.rematch", "Rematch"))
         self.pause_ai_btn.configure(text=self._t("button.pause_ai", "Pause AI"))
-        self.sandbox_btn.configure(text=self._t("button.sandbox", "Sandbox"))
+        if getattr(self, "sandbox_mode", False):
+            self.sandbox_btn.configure(text=self._t("button.exit_sandbox", "Exit Sandbox"))
+        else:
+            self.sandbox_btn.configure(text=self._t("button.sandbox", "Sandbox"))
         self.hint_btn.configure(text=self._t("button.hint", "Hint"))
         self.undo_btn.configure(text=self._t("button.undo_move", "Undo Move"))
         self.clean_slate_btn.configure(text=self._t("button.clean_slate", "Clean slate"))
@@ -971,12 +974,12 @@ class TicTacToeGUI:
     def _toggle_sandbox(self) -> None:
         self.sandbox_mode = not getattr(self, "sandbox_mode", False)
         if self.sandbox_mode:
-            self.sandbox_btn.configure(text="Exit Sandbox")
+            self.sandbox_btn.configure(text=self._t("button.exit_sandbox", "Exit Sandbox"))
             self.status_var.set("Sandbox: click cells to cycle through X/O/empty. Use Hint for AI best move.")
             self.sandbox_board = [" "] * 9
             self._refresh_board()
         else:
-            self.sandbox_btn.configure(text="Sandbox")
+            self.sandbox_btn.configure(text=self._t("button.sandbox", "Sandbox"))
             self.sandbox_board = [" "] * 9
             self.status_var.set("Sandbox exited. Start a game.")
             self.start_new_game()
