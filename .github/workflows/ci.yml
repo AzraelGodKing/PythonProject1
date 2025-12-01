@@ -16,7 +16,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12", "3.13", "3.14"]
+        # 3.14 install is failing on the runner; limit to 3.13 for now until preinstalled.
+        python-version: ["3.11", "3.12", "3.13"]
 
     steps:
       - name: Checkout
