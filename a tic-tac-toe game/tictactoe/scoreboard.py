@@ -2,9 +2,11 @@ import hashlib
 import json
 import os
 import tempfile
+from pathlib import Path
 from typing import Dict
 
-DATA_DIR = "data"
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = os.fspath(BASE_DIR / "data")
 SCOREBOARD_DIR = os.path.join(DATA_DIR, "scoreboard")
 SCOREBOARD_FILE = os.path.join(SCOREBOARD_DIR, "scoreboard.json")
 SCOREBOARD_BACKUP = os.path.join(SCOREBOARD_DIR, "scoreboard.json.bak")

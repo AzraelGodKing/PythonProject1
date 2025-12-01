@@ -16,5 +16,6 @@ tictactoe-gui = "gui:main"
 tictactoe-ai = "ai_vs_ai:main"
 
 [tool.setuptools]
+package-dir = {"" = "a tic-tac-toe game"}
 packages = ["tictactoe"]
 py-modules = ["gui", "ai_vs_ai", "options", "scoreboard"]

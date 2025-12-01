@@ -3,28 +3,13 @@
 
 # Allow listed files/directories
 !.gitignore
-!gui.py
-!tic-tac-toe.py
-!options.py
-!scoreboard.py
-!ai_vs_ai.py
 !README.md
 !pyproject.toml
-!CHANGELOG.md
-!locales/
-!locales/**
-
-!tictactoe/
-!tictactoe/**
-tictactoe/__pycache__/
-
+!/.github
+!/.github/**
 !tests/
 !tests/**
 tests/__pycache__/
-
-!data/
-!data/logs/
-!data/logs/.gitkeep
-
-!/.github
-!/.github/**
+__pycache__/
+!a\ tic-tac-toe\ game/
+!a\ tic-tac-toe\ game/**
