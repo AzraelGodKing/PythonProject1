@@ -1294,8 +1294,14 @@ class TicTacToeGUI:
             internal_level = level
         self.session.set_difficulty(internal_level, personality, use_humanish=self.humanish_normal.get())
         self.status_var.set(f"{self._t('status.prefix','')}{self.session.label()}. {self._t('status.choose','Start a game.')}")
-        # Sandbox available for any difficulty.
-        self.sandbox_btn.configure(state="normal")
+        if level != "Normal":
+            self.sandbox_mode = False
+            self.sandbox_btn.configure(
+                state="disabled",
+                text=f"{self._t('button.sandbox', 'Sandbox')} ({self._t('label.difficulty', 'Difficulty')}: Normal only)",
+            )
+        else:
+            self.sandbox_btn.configure(state="normal", text=self._t("button.sandbox", "Sandbox"))
 
     def _reset_scoreboard(self) -> None:
         if messagebox.askyesno("Reset scoreboard", "Reset all scores to zero?"):
