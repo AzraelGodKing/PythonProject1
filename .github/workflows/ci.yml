@@ -18,37 +18,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Locate Python ${{ matrix.python-version }}
-        shell: pwsh
-        run: |
-          $ver = "${{ matrix.python-version }}"
-          $candidates = @(
-            "py -$ver",
-            "python$ver",
-            "python",
-            "C:\Python$($ver.Replace('.',''))\python.exe",
-            "C:\Program Files\Python$($ver.Replace('.',''))\python.exe",
-            "C:\hostedtoolcache\windows\Python\$ver\x64\python.exe"
-          )
-          foreach ($cmd in $candidates) {
-            try {
-              & $cmd --version
-              "PY_CMD=$cmd" | Out-File -FilePath $env:GITHUB_ENV -Append
-              exit 0
-            } catch {
-              continue
-            }
-          }
-          Write-Error "No Python interpreter $ver found on desktop runner."
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: x64
 
       - name: Install
         run: |
-          ${env:PY_CMD} -m pip install --upgrade pip
-          ${env:PY_CMD} -m pip install -e .
+          python -m pip install --upgrade pip
+          python -m pip install -e .
 
       - name: Run tests
         run: |
-          ${env:PY_CMD} -m unittest discover -s tests -v
+          python -m unittest discover -s tests -v
 
   laptop:
     name: Laptop (Python ${{ matrix.python-version }})
@@ -62,34 +45,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Locate Python ${{ matrix.python-version }}
-        shell: pwsh
-        run: |
-          $ver = "${{ matrix.python-version }}"
-          $candidates = @(
-            "py -$ver",
-            "python$ver",
-            "python",
-            "C:\Python$($ver.Replace('.',''))\python.exe",
-            "C:\Program Files\Python$($ver.Replace('.',''))\python.exe",
-            "C:\hostedtoolcache\windows\Python\$ver\x64\python.exe"
-          )
-          foreach ($cmd in $candidates) {
-            try {
-              & $cmd --version
-              "PY_CMD=$cmd" | Out-File -FilePath $env:GITHUB_ENV -Append
-              exit 0
-            } catch {
-              continue
-            }
-          }
-          Write-Error "No Python interpreter $ver found on laptop runner."
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: x64
 
       - name: Install
         run: |
-          ${env:PY_CMD} -m pip install --upgrade pip
-          ${env:PY_CMD} -m pip install -e .
+          python -m pip install --upgrade pip
+          python -m pip install -e .
 
       - name: Run tests
         run: |
-          ${env:PY_CMD} -m unittest discover -s tests -v
+          python -m unittest discover -s tests -v
