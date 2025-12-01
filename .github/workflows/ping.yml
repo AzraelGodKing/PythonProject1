@@ -1,11 +1,11 @@
-name: Ping
+name: Ping Test
 
 on:
   workflow_dispatch:
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  ping:
+    runs-on: [self-hosted, Windows]
     steps:
       - name: Say hi
-        run: echo "hi from runner"
+        run: echo "This job ran on a self-hosted Windows runner!"
