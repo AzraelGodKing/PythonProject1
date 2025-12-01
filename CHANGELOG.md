@@ -1,5 +1,11 @@
 Change Log (local)
 
+v0.12
+- UI polish: refreshed styling for main GUI, options dialog, and crash report viewer; grouped View menu and removed duplicate sidebar buttons
+- Options now top-level; Sandbox mode moved to top menu with start/stop label and Normal-only gating
+- Default difficulty set to Normal with human-like AI; sandbox toggle reflects state and is hidden off-Normal
+- Options dialog buttons restyled; crash log clears each launch
+
 v0.11
 - Session history now saves per-day in dated folders, auto-creates today’s file, loads most recent history, and prunes old days
 

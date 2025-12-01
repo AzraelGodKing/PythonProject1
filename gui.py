@@ -123,9 +123,9 @@ FONTS_LARGE = {
 class GameSession:
     def __init__(self) -> None:
         self.scoreboard = game.load_scoreboard()
-        self.difficulty_key = "Easy"
+        self.difficulty_key = "Normal"
         self.personality = "standard"
-        self.ai_move_fn = game.ai_move_easy
+        self.ai_move_fn = lambda b: game.ai_move_normal_humanish(b, game.DEFAULT_ERROR_RATE)
         self.board = [" "] * 9
         self.game_over = False
         self.history = []
@@ -239,6 +239,7 @@ class TicTacToeGUI:
         self.round_start_time = None
         self.sandbox_mode = False
         self.sandbox_board = [" "] * 9
+        self.sandbox_btn: Optional[ttk.Button] = None
         self.badges = game.load_badges()
         self.badge_var = tk.StringVar(value="")
         self.streaks = {diff: 0 for diff in game.DIFFICULTIES}
@@ -384,6 +385,12 @@ class TicTacToeGUI:
             except Exception:
                 pass
         log_path = os.path.join(LOG_DIR, "app.log")
+        # Clear prior session log so crash report only reflects current run.
+        try:
+            if os.path.exists(log_path):
+                os.remove(log_path)
+        except OSError:
+            pass
         handler = RotatingFileHandler(log_path, maxBytes=200_000, backupCount=3, encoding="utf-8", delay=True)
         fmt = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
         handler.setFormatter(fmt)
@@ -450,12 +457,21 @@ class TicTacToeGUI:
         popup = tk.Toplevel(self.root)
         popup.title(self._t("crash.title", "Crash Report"))
         popup.configure(bg=self._color("BG"))
-        tk.Label(popup, text=self._t("crash.tip", "Review the log below; no data leaves your machine."), bg=self._color("BG"), fg=self._color("TEXT"), wraplength=520, justify="left").pack(anchor="w", padx=10, pady=(8, 4))
-        text = tk.Text(popup, width=70, height=14, bg=self._color("PANEL"), fg=self._color("TEXT"), relief="flat")
-        text.pack(fill="both", expand=True, padx=10, pady=10)
+        container = ttk.Frame(popup, style="Panel.TFrame", padding=12)
+        container.pack(fill="both", expand=True, padx=8, pady=8)
+        ttk.Label(container, text=self._t("crash.title", "Crash Report"), style="Banner.TLabel").pack(anchor="w", pady=(0, 4))
+        ttk.Label(
+            container,
+            text=self._t("crash.tip", "Review the log below; no data leaves your machine."),
+            style="Muted.TLabel",
+            wraplength=520,
+            justify="left",
+        ).pack(anchor="w", pady=(0, 8))
+        text = tk.Text(container, width=70, height=14, bg=self._color("PANEL"), fg=self._color("TEXT"), relief="flat")
+        text.pack(fill="both", expand=True, pady=(0, 10))
         text.insert("end", "\n".join(traceback_lines))
         text.configure(state="disabled")
-        ttk.Button(popup, text="Close", style="Panel.TButton", command=popup.destroy).pack(pady=(0, 10))
+        ttk.Button(container, text="Close", style="Panel.TButton", command=popup.destroy).pack(pady=(0, 4), anchor="e")
 
     def _build_layout(self) -> None:
         # Scrollable container so all controls remain reachable on smaller screens.
@@ -488,14 +504,24 @@ class TicTacToeGUI:
         container = scroll_frame
         container.columnconfigure(0, weight=3)
         container.columnconfigure(1, weight=2)
+        container.rowconfigure(1, weight=1)
+
+        header = ttk.Frame(container, style="App.TFrame")
+        header.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 12))
+        ttk.Label(header, text="Tic-Tac-Toe Suite", style="Banner.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Label(
+            header,
+            text="Play, track, and tweak with a refreshed look.",
+            style="Muted.TLabel",
+        ).grid(row=1, column=0, sticky="w")
 
         left = ttk.Frame(container, style="App.TFrame")
-        left.grid(row=0, column=0, sticky="nsew")
+        left.grid(row=1, column=0, sticky="nsew")
         left.columnconfigure(0, weight=1)
         left.rowconfigure(1, weight=1)
 
         right = ttk.Frame(container, style="App.TFrame")
-        right.grid(row=0, column=1, sticky="nsew", padx=(12, 0))
+        right.grid(row=1, column=1, sticky="nsew", padx=(12, 0))
         right.columnconfigure(0, weight=1)
 
         self._build_controls(left)
@@ -522,14 +548,28 @@ class TicTacToeGUI:
         menubar.add_cascade(label=self._t("menu.game", "Game"), menu=game_menu)
 
         view_menu = tk.Menu(menubar, tearoff=0)
-        view_menu.add_command(label=self._t("menu.achievements", "Achievements"), command=self._show_achievements_popup)
-        view_menu.add_command(label=self._t("menu.history", "History"), command=self._view_history_popup)
-        view_menu.add_command(label=self._t("menu.welcome_overlay", "Welcome Overlay"), command=lambda: self._show_intro_overlay(force=True))
-        view_menu.add_command(label=self._t("menu.whats_new", "What's New"), command=self._show_whats_new_popup)
-        view_menu.add_command(label=self._t("menu.change_log", "Change Log"), command=self._show_change_log_popup)
-        view_menu.add_command(label=self._t("menu.crash_report", "Crash Report"), command=self._show_crash_report)
-        view_menu.add_command(label=self._t("menu.options", "Options"), command=self._show_options_popup)
+        # Grouped and sorted for clarity.
+        for label, cmd in [
+            (self._t("menu.achievements", "Achievements"), self._show_achievements_popup),
+            (self._t("menu.history", "History"), self._view_history_popup),
+            (self._t("menu.welcome_overlay", "Welcome Overlay"), lambda: self._show_intro_overlay(force=True)),
+        ]:
+            view_menu.add_command(label=label, command=cmd)
+        view_menu.add_separator()
+        for label, cmd in [
+            (self._t("menu.whats_new", "What's New"), self._show_whats_new_popup),
+            (self._t("menu.change_log", "Change Log"), self._show_change_log_popup),
+            (self._t("menu.crash_report", "Crash Report"), self._show_crash_report),
+        ]:
+            view_menu.add_command(label=label, command=cmd)
+        view_menu.add_separator()
+        view_menu.add_command(label=self._t("button.clean_slate", "Clean slate"), command=self._clean_slate)
+        view_menu.add_command(label=self._t("button.ai_mode", "AI vs AI Mode"), command=self._show_ai_vs_ai_popup)
         menubar.add_cascade(label=self._t("menu.view", "View"), menu=view_menu)
+
+        if self.session.difficulty_key == "Normal":
+            menubar.add_command(label=self._sandbox_menu_label(), command=self._menu_sandbox)
+        menubar.add_command(label=self._t("menu.options", "Options"), command=self._show_options_popup)
 
         self.root.config(menu=menubar)
 
@@ -647,9 +687,10 @@ class TicTacToeGUI:
             pass
 
         style.configure("App.TFrame", background=self._color("BG"))
-        style.configure("Panel.TFrame", background=self._color("PANEL"), relief="flat")
+        style.configure("Panel.TFrame", background=self._color("PANEL"), relief="flat", borderwidth=1)
         style.configure("App.TLabel", background=self._color("BG"), foreground=self._color("TEXT"), font=self._font("text"))
         style.configure("Title.TLabel", background=self._color("PANEL"), foreground=self._color("TEXT"), font=self._font("title"))
+        style.configure("Banner.TLabel", background=self._color("BG"), foreground=self._color("ACCENT"), font=self._font("title"))
         style.configure("Status.TLabel", background=self._color("BG"), foreground=self._color("ACCENT"), font=self._font("title"))
         style.configure("Muted.TLabel", background=self._color("PANEL"), foreground=self._color("MUTED"), font=self._font("text"))
         style.configure(
@@ -660,19 +701,14 @@ class TicTacToeGUI:
             focuscolor=self._color("PANEL"),
         )
 
-        style.configure(
+        style.configure("Panel.TButton", padding=(10, 8), background=self._color("PANEL"), foreground=self._color("TEXT"), borderwidth=0, relief="flat")
+        style.map(
             "Panel.TButton",
-            padding=8,
-            background=self._color("PANEL"),
-            foreground=self._color("TEXT"),
+            background=[("active", self._color("ACCENT"))],
+            foreground=[("active", self._color("BG"))],
         )
 
-        style.configure(
-            "Accent.TButton",
-            padding=8,
-            background=self._color("BTN"),
-            foreground=self._color("BG"),
-        )
+        style.configure("Accent.TButton", padding=(12, 9), background=self._color("BTN"), foreground=self._color("BG"), borderwidth=0, relief="flat")
         style.map(
             "Accent.TButton",
             background=[("active", self._color("ACCENT"))],
@@ -780,14 +816,10 @@ class TicTacToeGUI:
         self.reset_btn.configure(text=self._t("button.reset_scoreboard", "Reset Scoreboard"))
         self.rematch_button.configure(text=self._t("button.rematch", "Rematch"))
         self.pause_ai_btn.configure(text=self._t("button.pause_ai", "Pause AI"))
-        self.sandbox_btn.configure(text=self._t("button.sandbox", "Sandbox"))
         self.hint_btn.configure(text=self._t("button.hint", "Hint"))
         self.undo_btn.configure(text=self._t("button.undo_move", "Undo Move"))
-        self.view_history_btn.configure(text=self._t("button.view_history", "View history"))
-        self.achievements_btn.configure(text=self._t("button.achievements", "Achievements"))
         self.clean_slate_btn.configure(text=self._t("button.clean_slate", "Clean slate"))
         self.ai_mode_btn.configure(text=self._t("button.ai_mode", "AI vs AI Mode"))
-        self.options_btn.configure(text=self._t("button.options", "Options"))
         self.moves_label.configure(text=self._t("label.moves_log", "Moves"))
         # update difficulty/personality combobox values
         self.diff_var.set(self._t(f"difficulty.{self.session.difficulty_key.lower()}", self.session.difficulty_key))
@@ -941,15 +973,30 @@ class TicTacToeGUI:
     def _toggle_sandbox(self) -> None:
         self.sandbox_mode = not getattr(self, "sandbox_mode", False)
         if self.sandbox_mode:
-            self.sandbox_btn.configure(text="Exit Sandbox")
+            if self.sandbox_btn:
+                self.sandbox_btn.configure(text=self._t("button.exit_sandbox", "Exit Sandbox"))
             self.status_var.set("Sandbox: click cells to cycle through X/O/empty. Use Hint for AI best move.")
             self.sandbox_board = [" "] * 9
             self._refresh_board()
         else:
-            self.sandbox_btn.configure(text="Sandbox")
+            if self.sandbox_btn:
+                self.sandbox_btn.configure(text="Sandbox Mode")
             self.sandbox_board = [" "] * 9
             self.status_var.set("Sandbox exited. Start a game.")
             self.start_new_game()
+        self._build_menu()
+
+    def _menu_sandbox(self) -> None:
+        if self.session.difficulty_key != "Normal":
+            messagebox.showinfo("Sandbox Mode", "Sandbox Mode is available on Normal difficulty only.")
+            return
+        if not getattr(self, "sandbox_mode", False):
+            self._toggle_sandbox()
+        else:
+            self._toggle_sandbox()
+
+    def _sandbox_menu_label(self) -> str:
+        return self._t("button.exit_sandbox", "Stop Sandbox Mode") if self.sandbox_mode else "Start Sandbox Mode"
 
     def _set_status_icon(self, mode: str) -> None:
         if not hasattr(self, "status_icon"):
@@ -996,7 +1043,7 @@ class TicTacToeGUI:
 
         self.diff_label = ttk.Label(top, text=self._t("label.difficulty", "Difficulty:"), style="App.TLabel", font=self._font("title"))
         self.diff_label.grid(row=0, column=0, sticky="w", padx=(0, 4))
-        self.diff_var = tk.StringVar(value=self._t("difficulty.easy", "Easy"))
+        self.diff_var = tk.StringVar(value=self._t("difficulty.normal", "Normal"))
         diff_menu = ttk.Combobox(
             top,
             textvariable=self.diff_var,
@@ -1033,8 +1080,6 @@ class TicTacToeGUI:
         self.rematch_button.grid(row=0, column=2, padx=(4, 0))
         self.pause_ai_btn = ttk.Button(btn_bar, text=self._t("button.pause_ai", "Pause AI"), command=self._toggle_ai_pause_main, style="Panel.TButton")
         self.pause_ai_btn.grid(row=0, column=3, padx=(4, 0))
-        self.sandbox_btn = ttk.Button(btn_bar, text=self._t("button.sandbox", "Sandbox"), command=self._toggle_sandbox, style="Panel.TButton")
-        self.sandbox_btn.grid(row=0, column=4, padx=(4, 0))
 
         match_row = ttk.Frame(top, style="App.TFrame")
         match_row.grid(row=1, column=0, columnspan=6, sticky="ew", pady=(6, 0))
@@ -1175,16 +1220,6 @@ class TicTacToeGUI:
         records = ttk.Frame(info, style="Panel.TFrame")
         records.grid(row=15, column=0, sticky="ew", pady=(6, 2))
         records.columnconfigure((0, 1), weight=1)
-        self.view_history_btn = ttk.Button(records, text=self._t("button.view_history", "View history"), style="Panel.TButton", command=self._view_history_popup)
-        self.view_history_btn.grid(row=0, column=0, sticky="ew", padx=2, pady=2)
-        self.achievements_btn = ttk.Button(records, text=self._t("button.achievements", "Achievements"), style="Panel.TButton", command=self._show_achievements_popup)
-        self.achievements_btn.grid(row=0, column=1, sticky="ew", padx=2, pady=2)
-        self.clean_slate_btn = ttk.Button(records, text=self._t("button.clean_slate", "Clean slate"), style="Panel.TButton", command=self._clean_slate)
-        self.clean_slate_btn.grid(row=1, column=0, sticky="ew", padx=2, pady=(2, 2))
-        self.ai_mode_btn = ttk.Button(records, text=self._t("button.ai_mode", "AI vs AI Mode"), style="Panel.TButton", command=self._show_ai_vs_ai_popup)
-        self.ai_mode_btn.grid(row=1, column=1, sticky="ew", padx=2, pady=(2, 2))
-        self.options_btn = ttk.Button(records, text=self._t("button.options", "Options"), style="Panel.TButton", command=self._show_options_popup)
-        self.options_btn.grid(row=2, column=0, columnspan=2, sticky="ew", padx=2, pady=(2, 0))
 
     def _on_diff_change(self, _event=None) -> None:
         self._apply_selection()
@@ -1272,9 +1307,14 @@ class TicTacToeGUI:
         self.session.set_difficulty(internal_level, personality, use_humanish=self.humanish_normal.get())
         self.status_var.set(f"{self._t('status.prefix','')}{self.session.label()}. {self._t('status.choose','Start a game.')}")
         if level != "Normal":
-            self.sandbox_btn.configure(state="disabled")
+            self.sandbox_mode = False
+            if self.sandbox_btn:
+                self.sandbox_btn.grid_remove()
         else:
-            self.sandbox_btn.configure(state="normal")
+            if self.sandbox_btn:
+                self.sandbox_btn.grid()
+                self.sandbox_btn.configure(state="normal", text="Sandbox Mode")
+        self._build_menu()
 
     def _reset_scoreboard(self) -> None:
         if messagebox.askyesno("Reset scoreboard", "Reset all scores to zero?"):
@@ -1392,7 +1432,12 @@ class TicTacToeGUI:
             self.root.after_cancel(self.pending_ai_id)
             self.pending_ai_id = None
         self.sandbox_mode = False
-        self.sandbox_btn.configure(text="Sandbox")
+        if self.sandbox_btn:
+            if self.session.difficulty_key == "Normal":
+                self.sandbox_btn.grid()
+                self.sandbox_btn.configure(text="Sandbox Mode")
+            else:
+                self.sandbox_btn.grid_remove()
         self.last_move_idx = None
         self.session.reset_board()
         self._apply_selection()

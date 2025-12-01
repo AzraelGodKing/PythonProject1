@@ -12,17 +12,20 @@ def show_options_popup(gui) -> None:
     popup = tk.Toplevel(gui.root)
     popup.title("Options")
     popup.configure(bg=gui._color("BG"))
-    popup.minsize(360, 460)
+    popup.minsize(380, 500)
     gui.options_popup = popup
-    frame = ttk.Frame(popup, padding=10, style="App.TFrame")
+    frame = ttk.Frame(popup, padding=16, style="Panel.TFrame")
     frame.grid(row=0, column=0, sticky="nsew")
     popup.columnconfigure(0, weight=1)
     popup.rowconfigure(0, weight=1)
     frame.columnconfigure((0, 1), weight=1)
 
-    ttk.Label(frame, text="Options", style="Title.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
+    ttk.Label(frame, text="Options", style="Banner.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
+    ttk.Label(frame, text="Tweak visuals, sounds, and behavior to your liking.", style="Muted.TLabel").grid(
+        row=1, column=0, columnspan=2, sticky="w", pady=(0, 12)
+    )
 
-    row = 1
+    row = 2
     for text, var, cmd in [
         ("Require confirmations", gui.confirm_moves, gui._toggle_confirm),
         ("Auto-start next game", gui.auto_start, gui._toggle_auto_start),
@@ -38,11 +41,18 @@ def show_options_popup(gui) -> None:
         ttk.Checkbutton(frame, text=text, variable=var, style="App.TCheckbutton", command=cmd).grid(row=row, column=0, columnspan=2, sticky="w", pady=2)
         row += 1
 
-    ttk.Button(frame, text="No animation/sound preset", style="Panel.TButton", command=gui._disable_motion_sound).grid(row=row, column=0, sticky="ew", pady=(8, 2))
-    ttk.Button(frame, text="Reset toggles to default", style="Panel.TButton", command=gui._reset_toggles).grid(row=row, column=1, sticky="ew", pady=(8, 2))
+    ttk.Button(frame, text="No animation/sound preset", style="Panel.TButton", command=gui._disable_motion_sound).grid(
+        row=row, column=0, sticky="ew", pady=(10, 4)
+    )
+    ttk.Button(frame, text="Reset toggles to default", style="Panel.TButton", command=gui._reset_toggles).grid(
+        row=row, column=1, sticky="ew", pady=(10, 4)
+    )
     row += 1
 
-    ttk.Label(frame, text="Theme", style="Title.TLabel").grid(row=row, column=0, columnspan=2, sticky="w", pady=(10, 2))
+    ttk.Separator(frame).grid(row=row, column=0, columnspan=2, sticky="ew", pady=(10, 8))
+    row += 1
+
+    ttk.Label(frame, text="Theme", style="Title.TLabel").grid(row=row, column=0, columnspan=2, sticky="w", pady=(0, 2))
     row += 1
     theme_box = ttk.Combobox(
         frame,
@@ -64,7 +74,9 @@ def show_options_popup(gui) -> None:
     theme_box.bind("<<ComboboxSelected>>", gui._on_theme_change)
     row += 1
 
-    ttk.Label(frame, text=gui._t("options.language", "Language"), style="Title.TLabel").grid(row=row, column=0, columnspan=2, sticky="w", pady=(10, 2))
+    ttk.Label(frame, text=gui._t("options.language", "Language"), style="Title.TLabel").grid(
+        row=row, column=0, columnspan=2, sticky="w", pady=(8, 2)
+    )
     row += 1
     lang_var = tk.StringVar(value=gui._lang_display(gui.language))
     lang_box = ttk.Combobox(
@@ -84,13 +96,17 @@ def show_options_popup(gui) -> None:
     )
     row += 1
 
-    swatch = tk.Canvas(frame, height=20, bg=gui._color("PANEL"), highlightthickness=0)
-    swatch.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(0, 8))
+    swatch = tk.Canvas(frame, height=24, bg=gui._color("PANEL"), highlightthickness=0)
+    swatch.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(0, 10))
     gui._update_theme_swatch(swatch)
     row += 1
 
-    ttk.Button(frame, text="Copy diagnostics", style="Panel.TButton", command=gui._copy_diagnostics).grid(row=row, column=0, columnspan=1, sticky="ew", pady=(6, 0))
-    ttk.Button(frame, text="Close", style="Panel.TButton", command=lambda: _close_options_popup(gui, popup)).grid(row=row, column=1, columnspan=1, sticky="ew", pady=(6, 0))
+    ttk.Button(frame, text="Copy diagnostics", style="Accent.TButton", command=gui._copy_diagnostics).grid(
+        row=row, column=0, columnspan=1, sticky="ew", pady=(8, 0)
+    )
+    ttk.Button(frame, text="Close", style="Accent.TButton", command=lambda: _close_options_popup(gui, popup)).grid(
+        row=row, column=1, columnspan=1, sticky="ew", pady=(8, 0)
+    )
 
 
 def _close_options_popup(gui, popup: tk.Toplevel) -> None:
