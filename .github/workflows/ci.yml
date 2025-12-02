@@ -7,20 +7,29 @@ on:
     branches: [main]
 
 jobs:
-  desktop-tests:
-    if: github.actor == 'AzraelGodKing'
-
-    name: Desktop (Python ${{ matrix.python-version }})
-    runs-on: [self-hosted, desktop]
-
+  tests:
+    name: Self-hosted Linux (Python ${{ matrix.python-version }})
+    runs-on: [self-hosted, X64, Linux, default]
+    continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+        include:
+          - python-version: "3.11"
+            experimental: false
+          - python-version: "3.12"
+            experimental: false
+          - python-version: "3.13"
+            experimental: false
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Install Tk dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tk tcl tk-dev python3-tk libx11-6 libxext6 libsm6 libxrender1
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
@@ -28,65 +37,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           architecture: x64
 
-      - name: Ensure pip is available
-        shell: powershell
-        run: |
-          $ErrorActionPreference = 'Continue'
-          python -m pip --version
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "pip missing, bootstrapping..."
-            Invoke-WebRequest -Uri https://bootstrap.pypa.io/get-pip.py -OutFile get-pip.py
-            python get-pip.py
-            python -m pip --version
-          } else {
-            Write-Host "pip already available"
-          }
-
-      - name: Upgrade pip and install package
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e .
-
-      - name: Run tests
-        run: |
-          python -m unittest discover -s tests -v
-
-  laptop-tests:
-    if: github.actor == 'AzraelGodKing'
-
-    name: Laptop (Python ${{ matrix.python-version }})
-    runs-on: [self-hosted, laptop]
-
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.11", "3.12", "3.13"]
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-          architecture: x64
-
-      - name: Ensure pip is available
-        shell: powershell
-        run: |
-          $ErrorActionPreference = 'Continue'
-          python -m pip --version
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "pip missing, bootstrapping..."
-            Invoke-WebRequest -Uri https://bootstrap.pypa.io/get-pip.py -OutFile get-pip.py
-            python get-pip.py
-            python -m pip --version
-          } else {
-            Write-Host "pip already available"
-          }
-
-      - name: Upgrade pip and install package
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e .
