@@ -13,11 +13,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12", "3.13", "3.14"]
+        # 3.14 install failing on self-hosted; limit to stable versions present.
+        python-version: ["3.11", "3.12", "3.13"]
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Install Tk dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tk tcl tk-dev python3-tk libx11-6 libxext6 libsm6 libxrender1
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
