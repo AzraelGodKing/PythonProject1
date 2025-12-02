@@ -1,6 +1,6 @@
 # Tic-Tac-Toe Suite
 
-A polished Python tic-tac-toe collection that runs both in the terminal and with a Tkinter windowed interface. The project includes multiple AI personalities, persistent scorekeeping, and configurable settings so you can explore strategies, demo the game, or just play a quick match without any external dependencies. All runnable files and assets now live in the `a tic-tac-toe game/` folder to keep the project organized.
+A polished Python tic-tac-toe collection that runs both in the terminal and with a Tkinter windowed interface. The project includes multiple AI personalities, persistent scorekeeping, and configurable settings so you can explore strategies, demo the game, or just play a quick match without any external dependencies. A root-level **Game Launcher** window (`launcher.py`) lets you open Tic-Tac-Toe or any future games you drop into the repository, while shared assets live under `shared/` for reuse across modules.
 
 ## Highlights
 - **Game modes:** Human vs AI in the CLI or GUI, plus an AI-vs-AI simulator with its own scoreboard.
@@ -18,6 +18,12 @@ A polished Python tic-tac-toe collection that runs both in the terminal and with
 3. Run commands from the repository root; the code and assets live under `a tic-tac-toe game/`.
 
 ## Running the games
+- **Game Launcher:**
+  ```bash
+  python launcher.py
+  ```
+  Opens a top-level hub where you can launch Tic-Tac-Toe today and enable future games (e.g., Blackjack or Go Fish) by adding their GUI entry points.
+
 - **CLI:**
   ```bash
   python "a tic-tac-toe game/tic-tac-toe.py"
