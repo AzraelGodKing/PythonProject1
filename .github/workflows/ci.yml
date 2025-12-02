@@ -21,8 +21,6 @@ jobs:
             experimental: false
           - python-version: "3.13"
             experimental: false
-          - python-version: "3.14"
-            experimental: true
 
     steps:
       - name: Checkout
