@@ -10,11 +10,19 @@ jobs:
   tests:
     name: Self-hosted Linux (Python ${{ matrix.python-version }})
     runs-on: [self-hosted, X64, Linux, default]
+    continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
       matrix:
-        # 3.14 install failing on self-hosted; limit to stable versions present.
-        python-version: ["3.11", "3.12", "3.13"]
+        include:
+          - python-version: "3.11"
+            experimental: false
+          - python-version: "3.12"
+            experimental: false
+          - python-version: "3.13"
+            experimental: false
+          - python-version: "3.14"
+            experimental: true
 
     steps:
       - name: Checkout
