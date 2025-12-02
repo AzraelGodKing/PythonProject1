@@ -12,6 +12,7 @@
 !tests/**
 tests/__pycache__/
 __pycache__/
+!launcher.py
 !a\ tic-tac-toe\ game/
 !a\ tic-tac-toe\ game/**
 !shared/
