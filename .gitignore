@@ -13,3 +13,5 @@ tests/__pycache__/
 __pycache__/
 !a\ tic-tac-toe\ game/
 !a\ tic-tac-toe\ game/**
+!shared/
+!shared/**
