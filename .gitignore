@@ -4,6 +4,7 @@
 # Allow listed files/directories
 !.gitignore
 !README.md
+!CHANGELOG.md
 !pyproject.toml
 !/.github
 !/.github/**
@@ -13,3 +14,5 @@ tests/__pycache__/
 __pycache__/
 !a\ tic-tac-toe\ game/
 !a\ tic-tac-toe\ game/**
+!shared/
+!shared/**

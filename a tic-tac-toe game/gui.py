@@ -29,7 +29,7 @@ SETTINGS_FILE = "gui_settings.json"
 SETTINGS_BACKUP = os.path.join(LOG_DIR, "gui_settings.json.bak")
 BASE_DIR = Path(__file__).resolve().parent
 CHANGELOG_FILE = os.fspath(BASE_DIR / "CHANGELOG.md")
-LOCALES_DIR = os.fspath(BASE_DIR / "locales")
+LOCALES_DIR = os.fspath(BASE_DIR.parent / "shared" / "locales")
 
 PALETTE_DEFAULT = {
     "BG": "#0f172a",
