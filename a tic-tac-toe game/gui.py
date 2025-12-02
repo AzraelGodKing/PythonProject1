@@ -7,6 +7,7 @@ import json
 import logging
 from logging.handlers import RotatingFileHandler
 import os
+import sys
 import tkinter as tk
 import atexit
 import math
@@ -31,82 +32,11 @@ BASE_DIR = Path(__file__).resolve().parent
 CHANGELOG_FILE = os.fspath(BASE_DIR / "CHANGELOG.md")
 LOCALES_DIR = os.fspath(BASE_DIR.parent / "shared" / "locales")
 
-PALETTE_DEFAULT = {
-    "BG": "#0f172a",
-    "PANEL": "#1e293b",
-    "ACCENT": "#38bdf8",
-    "TEXT": "#e2e8f0",
-    "MUTED": "#94a3b8",
-    "BTN": "#0ea5e9",
-    "O": "#f97316",
-    "CELL": "#233244",
-}
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
-PALETTE_HIGH_CONTRAST = {
-    "BG": "#000000",
-    "PANEL": "#111111",
-    "ACCENT": "#ffeb3b",
-    "TEXT": "#ffffff",
-    "MUTED": "#cccccc",
-    "BTN": "#ff9800",
-    "O": "#ff5722",
-    "CELL": "#1f1f1f",
-}
-
-PALETTE_LIGHT = {
-    "BG": "#f6f8fb",
-    "PANEL": "#e1e7f2",
-    "ACCENT": "#0077ff",
-    "TEXT": "#111827",
-    "MUTED": "#4b5563",
-    "BTN": "#2563eb",
-    "O": "#f97316",
-    "CELL": "#ffffff",
-}
-
-PALETTE_PROTAN = {
-    "BG": "#0f1627",
-    "PANEL": "#192339",
-    "ACCENT": "#f2c14e",
-    "TEXT": "#e6edf5",
-    "MUTED": "#c0cad8",
-    "BTN": "#f08a5d",
-    "O": "#00b7a8",
-    "CELL": "#1f2c40",
-}
-
-PALETTE_DEUTAN = {
-    "BG": "#0e1524",
-    "PANEL": "#1b273a",
-    "ACCENT": "#ffc857",
-    "TEXT": "#edf2f7",
-    "MUTED": "#cbd5e1",
-    "BTN": "#ef476f",
-    "O": "#06d6a0",
-    "CELL": "#1f2c42",
-}
-
-PALETTE_TRITAN = {
-    "BG": "#0f172a",
-    "PANEL": "#1c2540",
-    "ACCENT": "#f9c80e",
-    "TEXT": "#e5ecf5",
-    "MUTED": "#cbd5e1",
-    "BTN": "#a4508b",
-    "O": "#2dd4bf",
-    "CELL": "#22314f",
-}
-
-PALETTE_MONO = {
-    "BG": "#0f1115",
-    "PANEL": "#1b1f26",
-    "ACCENT": "#d1d5db",
-    "TEXT": "#f3f4f6",
-    "MUTED": "#9ca3af",
-    "BTN": "#e5e7eb",
-    "O": "#d1d5db",
-    "CELL": "#222630",
-}
+from shared.options import PALETTES
 
 FONTS_DEFAULT = {
     "board": ("Segoe UI", 16, "bold"),
@@ -227,6 +157,7 @@ class TicTacToeGUI:
         self.achievements_popup: Optional[tk.Toplevel] = None
         self.ai_vs_ai_popup: Optional[tk.Toplevel] = None
         self.intro_popup: Optional[tk.Toplevel] = None
+        self.change_log_popup: Optional[tk.Toplevel] = None
         self.ai_running = False
         self.ai_paused = False
         self.ai_paused_main = False
@@ -325,19 +256,8 @@ class TicTacToeGUI:
         return diff_label
 
     def _resolve_palette(self, theme: str) -> dict:
-        if theme == "high_contrast":
-            return dict(PALETTE_HIGH_CONTRAST)
-        if theme == "colorblind_protan":
-            return dict(PALETTE_PROTAN)
-        if theme == "colorblind_deutan":
-            return dict(PALETTE_DEUTAN)
-        if theme == "colorblind_tritan":
-            return dict(PALETTE_TRITAN)
-        if theme == "monochrome":
-            return dict(PALETTE_MONO)
-        if theme == "light":
-            return dict(PALETTE_LIGHT)
-        return dict(PALETTE_DEFAULT)
+        base = PALETTES.get(theme) or PALETTES.get("default", {})
+        return dict(base)
 
     def _match_score_text(self) -> str:
         base = (
@@ -426,14 +346,34 @@ class TicTacToeGUI:
                 lines = f.read().splitlines()
         except OSError:
             lines = ["Change Log unavailable.", "Please ensure CHANGELOG.md exists."]
+        if self.change_log_popup and self.change_log_popup.winfo_exists():
+            self.change_log_popup.lift()
+            self.change_log_popup.focus_set()
+            return
         popup = tk.Toplevel(self.root)
+        self.change_log_popup = popup
         popup.title("Change Log")
         popup.configure(bg=self._color("BG"))
-        text = tk.Text(popup, width=60, height=12, bg=self._color("PANEL"), fg=self._color("TEXT"), relief="flat")
+        popup.protocol("WM_DELETE_WINDOW", lambda: self._close_change_log_popup(popup))
+        text = tk.Text(
+            popup,
+            width=60,
+            height=12,
+            bg=self._color("PANEL"),
+            fg=self._color("TEXT"),
+            relief="flat",
+            insertbackground=self._color("TEXT"),
+        )
         text.pack(fill="both", expand=True, padx=10, pady=10)
         text.insert("end", "\n".join(lines))
         text.configure(state="disabled")
-        ttk.Button(popup, text="Close", style="Panel.TButton", command=popup.destroy).pack(pady=(0, 10))
+        ttk.Button(popup, text="Close", style="Panel.TButton", command=lambda: self._close_change_log_popup(popup)).pack(pady=(0, 10))
+
+    def _close_change_log_popup(self, popup: tk.Toplevel) -> None:
+        try:
+            popup.destroy()
+        finally:
+            self.change_log_popup = None
 
     def _show_crash_report(self) -> None:
         log_path = os.path.join(LOG_DIR, "app.log")
@@ -767,6 +707,7 @@ class TicTacToeGUI:
             self.score_label.configure(font=self._font("text"))
             self.history_label.configure(font=self._font("text"))
             self.match_label.configure(font=self._font("text"))
+        self._refresh_all_popups_theme()
         self._save_settings()
 
     def _apply_compact_layout(self) -> None:
@@ -788,6 +729,39 @@ class TicTacToeGUI:
         self._show_whats_new_popup()
         self.show_whats_new.set(False)
         self._save_settings()
+
+    def _refresh_all_popups_theme(self) -> None:
+        for popup in (
+            getattr(self, "options_popup", None),
+            getattr(self, "intro_popup", None),
+            getattr(self, "history_popup", None),
+            getattr(self, "achievements_popup", None),
+            getattr(self, "change_log_popup", None),
+        ):
+            if popup and popup.winfo_exists():
+                self._retint_popup(popup)
+
+    def _retint_popup(self, popup: tk.Toplevel) -> None:
+        popup.configure(bg=self._color("BG"))
+        for child in popup.winfo_children():
+            if isinstance(child, tk.Text):
+                child.configure(bg=self._color("PANEL"), fg=self._color("TEXT"), insertbackground=self._color("TEXT"))
+            elif isinstance(child, tk.Label):
+                child.configure(bg=self._color("BG"), fg=self._color("TEXT"))
+            elif isinstance(child, tk.Canvas):
+                child.configure(bg=self._color("PANEL"))
+        # Options popup uses ttk styles, so call existing helper
+        if popup is getattr(self, "options_popup", None):
+            self._refresh_options_popup_theme()
+
+    def _refresh_options_popup_theme(self) -> None:
+        popup = getattr(self, "options_popup", None)
+        if not popup or not popup.winfo_exists():
+            return
+        popup.configure(bg=self._color("BG"))
+        for child in popup.winfo_children():
+            if isinstance(child, tk.Canvas):
+                child.configure(bg=self._color("PANEL"))
 
     def _show_whats_new_popup(self) -> None:
         msg = (

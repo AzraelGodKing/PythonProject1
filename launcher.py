@@ -38,8 +38,8 @@ class GameLauncherApp:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.root.title("Game Launcher")
-        self.root.geometry("540x420")
-        self.root.minsize(480, 380)
+        self.root.geometry("700x540")
+        self.root.minsize(640, 500)
 
         self.games = self._load_games()
 
@@ -56,7 +56,7 @@ class GameLauncherApp:
         style.configure("CardText.TLabel", background="#1e293b", foreground="#cbd5e1", wraplength=360)
         style.configure("Status.TLabel", background="#1e293b", foreground="#38bdf8", font=("Segoe UI", 10, "bold"))
         style.configure("DisabledStatus.TLabel", background="#1e293b", foreground="#94a3b8", font=("Segoe UI", 10, "bold"))
-        style.configure("Launch.TButton", padding=(10, 4))
+        style.configure("Launch.TButton", padding=(10, 6))
 
     def _build_header(self) -> None:
         container = ttk.Frame(self.root, padding=16)
@@ -149,7 +149,18 @@ class GameLauncherApp:
 
 
 def main() -> None:
-    root = tk.Tk()
+    try:
+        root = tk.Tk()
+    except tk.TclError as exc:
+        message = (
+            "Could not start the launcher because Tk/Tcl is unavailable in this Python build.\n\n"
+            "If you're on Windows with multiple Python versions (e.g., 3.12 and a 3.14 preview), "
+            "try running with a version that bundles Tk:\n"
+            "    py -3.12 launcher.py\n\n"
+            f"Details: {exc}"
+        )
+        print(message, file=sys.stderr)
+        return
     GameLauncherApp(root)
     root.mainloop()
 
