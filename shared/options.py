@@ -17,6 +17,7 @@ THEME_CHOICES = (
     "colorblind_tritan",
     "monochrome",
     "light",
+    "dark",
 )
 PALETTES = {
     "default": {
@@ -88,6 +89,18 @@ PALETTES = {
         "BTN": "#e5e7eb",
         "O": "#d1d5db",
         "CELL": "#222630",
+    },
+    "dark": {
+        "BG": "#0b1220",
+        "PANEL": "#111a2c",
+        "ACCENT": "#4cc9f0",
+        "TEXT": "#e2e8f0",
+        "MUTED": "#94a3b8",
+        "BTN": "#4895ef",
+        "O": "#f59e0b",
+        "CELL": "#162135",
+        "CARD": "#0f172a",
+        "BORDER": "#22304a",
     },
 }
 
