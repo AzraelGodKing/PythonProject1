@@ -9,6 +9,7 @@ on:
 jobs:
   tests:
     name: Self-hosted Linux (Python ${{ matrix.python-version }})
+    if: github.event_name != 'push' || github.actor == 'AzraelGodKing'
     runs-on: [self-hosted, X64, Linux, default]
     continue-on-error: ${{ matrix.experimental }}
     strategy:
