@@ -15,7 +15,7 @@ A polished Python tic-tac-toe collection that runs both in the terminal and with
    python -m venv .venv
    source .venv/bin/activate  # On Windows: .venv\\Scripts\\activate
    ```
-3. Run commands from the repository root; the code and assets live under `a tic-tac-toe game/`.
+3. Run commands from the repository root; the code and assets live under `tic-tac-toe/`.
 
 ## Running the games
 - **Game Launcher:**
@@ -26,19 +26,19 @@ A polished Python tic-tac-toe collection that runs both in the terminal and with
 
 - **CLI:**
   ```bash
-  python "a tic-tac-toe game/tic-tac-toe.py"
+  python "tic-tac-toe/tic-tac-toe.py"
   ```
   Guides you through move input and records results in the main scoreboard.
 
 - **GUI:**
   ```bash
-  python "a tic-tac-toe game/gui.py"
+  python "tic-tac-toe/gui.py"
   ```
   Opens a Tkinter window with board controls, score tracking, and configurable themes (default, high-contrast, colorblind, light).
 
 - **AI vs AI:**
   ```bash
-  python "a tic-tac-toe game/ai_vs_ai.py"
+  python "tic-tac-toe/ai_vs_ai.py"
   ```
   Choose two AI personas and a round count to watch automated play. Results save to a dedicated AI-vs-AI scoreboard.
 
@@ -47,9 +47,9 @@ A polished Python tic-tac-toe collection that runs both in the terminal and with
 - **GUI controls:** Undo and hint buttons, status panel, scoreboard, options dialog for themes, font sizing, animation and sound toggles, plus keyboard shortcuts.
 
 ## Data and persistence
-- **Scoreboards:** Stored under `a tic-tac-toe game/data/scoreboard/` with automatic `.bak` backups.
-- **GUI settings:** Written to `gui_settings.json` (backed up at `a tic-tac-toe game/data/logs/gui_settings.json.bak`). Override the location with the `GUI_SETTINGS_PATH` environment variable.
-- **Logs:** Session histories and backups live under `a tic-tac-toe game/data/logs/`; the folder is tracked via `a tic-tac-toe game/data/logs/.gitkeep`.
+- **Scoreboards:** Stored under `tic-tac-toe/data/scoreboard/` with automatic `.bak` backups.
+- **GUI settings:** Written to `gui_settings.json` (backed up at `tic-tac-toe/data/logs/gui_settings.json.bak`). Override the location with the `GUI_SETTINGS_PATH` environment variable.
+- **Logs:** Session histories and backups live under `tic-tac-toe/data/logs/`; the folder is tracked via `tic-tac-toe/data/logs/.gitkeep`.
 
 ## Testing
 Run the bundled smoke tests from the project root:

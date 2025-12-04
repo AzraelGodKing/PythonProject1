@@ -20,13 +20,9 @@ __pycache__/
 # Re-ignore Python bytecode caches even inside allowed dirs
 **/__pycache__/
 
-# Do not track per-user tic-tac-toe data
-/a tic-tac-toe game/data/scoreboard/scoreboard.json
-/a tic-tac-toe game/data/logs/user.log
-
-/a tic-tac-toe game/data/scoreboard/scoreboard.json.bak
-
 /tic-tac-toe/data/scoreboard/badges.json
 
 /tic-tac-toe/data/history/
+/data/logs/
+/data/history/
 

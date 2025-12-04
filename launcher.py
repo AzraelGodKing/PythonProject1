@@ -167,7 +167,7 @@ class GameLauncherApp:
             GameEntry(
                 name="Tic-Tac-Toe",
                 description="Play the classic 3x3 grid with AI personas, themes, and scoreboard tracking.",
-                script_path=project_root / "a tic-tac-toe game" / "gui.py",
+                script_path=project_root / "tic-tac-toe" / "gui.py",
             ),
             GameEntry(
                 name="Blackjack",
