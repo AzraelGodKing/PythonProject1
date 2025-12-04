@@ -13,7 +13,9 @@
 tests/__pycache__/
 __pycache__/
 !launcher.py
-!a\ tic-tac-toe\ game/
-!a\ tic-tac-toe\ game/**
+!tic-tac-toe/
+!tic-tac-toe/**
 !shared/
 !shared/**
+# Re-ignore Python bytecode caches even inside allowed dirs
+**/__pycache__/

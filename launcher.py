@@ -14,6 +14,8 @@ from pathlib import Path
 from tkinter import messagebox, ttk
 from typing import Iterable, List, Optional
 
+from shared.options import PALETTES
+
 
 @dataclass
 class GameEntry:
@@ -42,42 +44,71 @@ class GameLauncherApp:
         self.root.minsize(640, 500)
 
         self.games = self._load_games()
+        self.palette = PALETTES.get("default", {})
 
         self._apply_theme()
         self._build_header()
         self._build_game_list()
 
+    def _color(self, key: str) -> str:
+        return self.palette.get(key, "#0f172a")
+
     def _apply_theme(self) -> None:
-        self.root.configure(bg="#0f172a")
+        self.root.configure(bg=self._color("BG"))
         style = ttk.Style(self.root)
         style.theme_use("clam")
-        style.configure("Card.TFrame", background="#1e293b")
-        style.configure("CardHeading.TLabel", background="#1e293b", foreground="#e2e8f0", font=("Segoe UI", 12, "bold"))
-        style.configure("CardText.TLabel", background="#1e293b", foreground="#cbd5e1", wraplength=360)
-        style.configure("Status.TLabel", background="#1e293b", foreground="#38bdf8", font=("Segoe UI", 10, "bold"))
-        style.configure("DisabledStatus.TLabel", background="#1e293b", foreground="#94a3b8", font=("Segoe UI", 10, "bold"))
-        style.configure("Launch.TButton", padding=(10, 6))
+        style.configure("App.TFrame", background=self._color("BG"))
+        style.configure("Hero.TFrame", background=self._color("PANEL"))
+        style.configure("HeroTitle.TLabel", background=self._color("PANEL"), foreground=self._color("TEXT"), font=("Segoe UI", 16, "bold"))
+        style.configure("HeroMuted.TLabel", background=self._color("PANEL"), foreground=self._color("MUTED"), font=("Segoe UI", 10))
+        style.configure("Card.TFrame", background=self._color("CARD"), borderwidth=1, relief="solid")
+        style.configure("CardHeading.TLabel", background=self._color("CARD"), foreground=self._color("TEXT"), font=("Segoe UI", 13, "bold"))
+        style.configure("CardText.TLabel", background=self._color("CARD"), foreground=self._color("MUTED"), wraplength=420)
+        style.configure("Status.TLabel", background=self._color("CARD"), foreground=self._color("ACCENT"), font=("Segoe UI", 10, "bold"), padding=(8, 2))
+        style.configure("DisabledStatus.TLabel", background=self._color("CARD"), foreground=self._color("MUTED"), font=("Segoe UI", 10, "bold"), padding=(8, 2))
+        style.configure(
+            "Launch.TButton",
+            padding=(12, 8),
+            background=self._color("BTN"),
+            foreground=self._color("BG"),
+            borderwidth=0,
+            relief="flat",
+        )
+        style.map(
+            "Launch.TButton",
+            background=[("active", self._color("ACCENT"))],
+            foreground=[("active", self._color("BG"))],
+        )
+        style.configure("Separator.TFrame", background=self._color("BG"))
+        style.configure("Badge.TLabel", background=self._color("ACCENT"), foreground=self._color("BG"), padding=(10, 4), font=("Segoe UI", 9, "bold"))
+        style.configure("BadgeMuted.TLabel", background=self._color("BORDER"), foreground=self._color("TEXT"), padding=(10, 4), font=("Segoe UI", 9, "bold"))
+        style.configure("TSeparator", background=self._color("BORDER"))
 
     def _build_header(self) -> None:
-        container = ttk.Frame(self.root, padding=16)
+        container = ttk.Frame(self.root, padding=16, style="Hero.TFrame")
         container.pack(fill="x")
 
-        title = ttk.Label(container, text="Arcade Hub", font=("Segoe UI", 16, "bold"), foreground="#e2e8f0", background="#0f172a")
+        title = ttk.Label(container, text="Arcade Hub", style="HeroTitle.TLabel")
         subtitle = ttk.Label(
             container,
             text="Choose a game to launch in its own window. Add new games to the project and they will appear here.",
-            font=("Segoe UI", 10),
-            foreground="#cbd5e1",
-            background="#0f172a",
-            wraplength=480,
+            style="HeroMuted.TLabel",
+            wraplength=520,
             justify="left",
         )
 
         title.pack(anchor="w")
-        subtitle.pack(anchor="w", pady=(4, 0))
+        subtitle.pack(anchor="w", pady=(4, 8))
+
+        ready = sum(1 for g in self.games if g.available)
+        total = len(self.games)
+        badge_style = "Badge.TLabel" if ready else "BadgeMuted.TLabel"
+        ttk.Label(container, text=f"{ready}/{total} ready to launch", style=badge_style).pack(anchor="w")
+
+        ttk.Separator(self.root).pack(fill="x")
 
     def _build_game_list(self) -> None:
-        list_container = ttk.Frame(self.root, padding=(16, 4))
+        list_container = ttk.Frame(self.root, padding=(16, 4), style="App.TFrame")
         list_container.pack(fill="both", expand=True)
 
         for game in self.games:
@@ -91,12 +122,15 @@ class GameLauncherApp:
         heading.grid(row=0, column=0, sticky="w")
 
         status_style = "Status.TLabel" if game.available else "DisabledStatus.TLabel"
-        status_text = "Ready" if game.available else "Not installed yet"
+        status_text = "Ready to play" if game.available else "Missing files"
         status = ttk.Label(card, text=status_text, style=status_style)
-        status.grid(row=0, column=1, sticky="e")
+        status.grid(row=0, column=1, sticky="e", padx=(6, 0))
 
         desc = ttk.Label(card, text=game.description, style="CardText.TLabel", justify="left")
-        desc.grid(row=1, column=0, columnspan=2, sticky="w", pady=(6, 10))
+        desc.grid(row=1, column=0, columnspan=2, sticky="w", pady=(6, 8))
+
+        path_label = ttk.Label(card, text=str(game.script_path), style="CardText.TLabel", justify="left")
+        path_label.grid(row=2, column=0, columnspan=2, sticky="w")
 
         launch_btn = ttk.Button(
             card,
@@ -106,7 +140,7 @@ class GameLauncherApp:
             state=("normal" if game.available else "disabled"),
             width=14,
         )
-        launch_btn.grid(row=0, column=2, rowspan=2, padx=(12, 0))
+        launch_btn.grid(row=0, column=2, rowspan=3, padx=(12, 0))
 
         card.columnconfigure(0, weight=1)
         card.columnconfigure(1, weight=0)

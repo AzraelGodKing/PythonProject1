@@ -21,82 +21,97 @@ THEME_CHOICES = (
 )
 PALETTES = {
     "default": {
-        "BG": "#0f172a",
-        "PANEL": "#1e293b",
-        "ACCENT": "#38bdf8",
-        "TEXT": "#e2e8f0",
-        "MUTED": "#94a3b8",
-        "BTN": "#0ea5e9",
-        "O": "#f97316",
-        "CELL": "#233244",
+        # Vivid but comfortable midnight palette for legibility
+        "BG": "#0c1222",
+        "PANEL": "#142039",
+        "ACCENT": "#7dd3fc",
+        "TEXT": "#f8fafc",
+        "MUTED": "#cbd5e1",
+        "BTN": "#3b82f6",
+        "O": "#fbbf24",
+        "CELL": "#0f1f3a",
+        "CARD": "#0b162c",
+        "BORDER": "#2c4163",
     },
     "high_contrast": {
-        "BG": "#000000",
-        "PANEL": "#111111",
-        "ACCENT": "#ffeb3b",
-        "TEXT": "#ffffff",
-        "MUTED": "#cccccc",
-        "BTN": "#ff9800",
-        "O": "#ff5722",
-        "CELL": "#1f1f1f",
+        "BG": "#010409",
+        "PANEL": "#0f172a",
+        "ACCENT": "#facc15",
+        "TEXT": "#f8fafc",
+        "MUTED": "#e2e8f0",
+        "BTN": "#fb923c",
+        "O": "#f97316",
+        "CELL": "#111827",
+        "CARD": "#0b1220",
+        "BORDER": "#facc15",
     },
     "light": {
-        "BG": "#f6f8fb",
-        "PANEL": "#e1e7f2",
-        "ACCENT": "#0077ff",
-        "TEXT": "#111827",
-        "MUTED": "#4b5563",
-        "BTN": "#2563eb",
-        "O": "#f97316",
+        "BG": "#f8fafc",
+        "PANEL": "#e5e7eb",
+        "ACCENT": "#2563eb",
+        "TEXT": "#0f172a",
+        "MUTED": "#475569",
+        "BTN": "#1d4ed8",
+        "O": "#d97706",
         "CELL": "#ffffff",
+        "CARD": "#ffffff",
+        "BORDER": "#cbd5e1",
     },
     "colorblind_protan": {
-        "BG": "#0f1627",
-        "PANEL": "#192339",
-        "ACCENT": "#f2c14e",
-        "TEXT": "#e6edf5",
-        "MUTED": "#c0cad8",
-        "BTN": "#f08a5d",
-        "O": "#00b7a8",
-        "CELL": "#1f2c40",
+        "BG": "#0d152a",
+        "PANEL": "#16223b",
+        "ACCENT": "#f4c430",
+        "TEXT": "#e8edf5",
+        "MUTED": "#c6cfdd",
+        "BTN": "#f59e0b",
+        "O": "#22c55e",
+        "CELL": "#1c2b45",
+        "CARD": "#13253d",
+        "BORDER": "#304566",
     },
     "colorblind_deutan": {
-        "BG": "#0e1524",
-        "PANEL": "#1b273a",
-        "ACCENT": "#ffc857",
-        "TEXT": "#edf2f7",
+        "BG": "#0d1426",
+        "PANEL": "#1a263c",
+        "ACCENT": "#f59e0b",
+        "TEXT": "#edf2fb",
         "MUTED": "#cbd5e1",
         "BTN": "#ef476f",
-        "O": "#06d6a0",
-        "CELL": "#1f2c42",
+        "O": "#16a34a",
+        "CELL": "#1f2f48",
+        "CARD": "#14243b",
+        "BORDER": "#2c3f5c",
     },
     "colorblind_tritan": {
         "BG": "#0f172a",
-        "PANEL": "#1c2540",
-        "ACCENT": "#f9c80e",
+        "PANEL": "#1b2540",
+        "ACCENT": "#f59e0b",
         "TEXT": "#e5ecf5",
         "MUTED": "#cbd5e1",
-        "BTN": "#a4508b",
-        "O": "#2dd4bf",
-        "CELL": "#22314f",
+        "BTN": "#a855f7",
+        "O": "#22d3ee",
+        "CELL": "#213153",
+        "CARD": "#16233f",
+        "BORDER": "#33476b",
     },
     "monochrome": {
-        "BG": "#0f1115",
-        "PANEL": "#1b1f26",
-        "ACCENT": "#d1d5db",
+        "BG": "#0e1117",
+        "PANEL": "#161c27",
+        "ACCENT": "#e5e7eb",
         "TEXT": "#f3f4f6",
         "MUTED": "#9ca3af",
-        "BTN": "#e5e7eb",
-        "O": "#d1d5db",
-        "CELL": "#222630",
+        "BTN": "#d1d5db",
+        "O": "#e5e7eb",
+        "CELL": "#1d2431",
+        "CARD": "#141a24",
+        "BORDER": "#303746",
     },
     "dark": {
         "BG": "#0b1220",
         "PANEL": "#111a2c",
-        "ACCENT": "#4cc9f0",
+        "ACCENT": "#67e8f9",
         "TEXT": "#e2e8f0",
         "MUTED": "#94a3b8",
-        "BTN": "#4895ef",
+        "BTN": "#38bdf8",
         "O": "#f59e0b",
         "CELL": "#162135",
         "CARD": "#0f172a",
@@ -133,21 +148,27 @@ def show_options_popup(
     popup.minsize(380, 500)
     gui.options_popup = popup
 
-    frame = ttk.Frame(popup, padding=16, style="Panel.TFrame")
+    frame = ttk.Frame(popup, padding=20, style="Panel.TFrame")
     frame.grid(row=0, column=0, sticky="nsew")
     popup.columnconfigure(0, weight=1)
     popup.rowconfigure(0, weight=1)
     frame.columnconfigure((0, 1), weight=1)
 
-    ttk.Label(frame, text=title, style="Banner.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
+    ttk.Label(frame, text=title, style="Banner.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 6))
     ttk.Label(frame, text=subtitle, style="Muted.TLabel").grid(row=1, column=0, columnspan=2, sticky="w", pady=(0, 12))
 
     row = 2
+    toggle_frame = ttk.Frame(frame, style="Panel.TFrame", padding=(10, 8))
+    toggle_frame.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(0, 6))
+    toggle_frame.columnconfigure(0, weight=1)
+    row += 1
+    toggle_row = 0
     for text, var, cmd in toggles:
-        ttk.Checkbutton(frame, text=text, variable=var, style="App.TCheckbutton", command=cmd).grid(
-            row=row, column=0, columnspan=2, sticky="w", pady=2
+        ttk.Checkbutton(toggle_frame, text=text, variable=var, style="App.TCheckbutton", command=cmd).grid(
+            row=toggle_row, column=0, columnspan=2, sticky="w", pady=2, padx=(0, 6)
         )
-        row += 1
+        toggle_row += 1
+    row = 3
 
     for idx, (label, action) in enumerate(preset_actions):
         ttk.Button(frame, text=label, style="Panel.TButton", command=action).grid(
@@ -197,7 +218,7 @@ def show_options_popup(
     )
     row += 1
 
-    swatch = tk.Canvas(frame, height=24, bg=gui._color("PANEL"), highlightthickness=0)
+    swatch = tk.Canvas(frame, height=28, bg=gui._color("PANEL"), highlightthickness=1, highlightbackground=gui._color("BORDER"))
     swatch.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(0, 10))
     gui._update_theme_swatch(swatch)
     row += 1

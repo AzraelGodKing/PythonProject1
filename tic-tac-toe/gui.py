@@ -1637,7 +1637,10 @@ class TicTacToeGUI:
         self.last_move_idx = None
         self._save_history_now()
         self._update_streaks_and_badges(winner, elapsed)
-        self._celebrate_win()
+        if winner == "X":
+            self._celebrate_win()
+        elif winner == "O":
+            self._commiserate_loss()
         if self.auto_start.get():
             if getattr(self, "match_over", False):
                 # Auto-start a fresh match when the current one is done (helps Bo1 users).
@@ -1691,6 +1694,22 @@ class TicTacToeGUI:
                     btn.configure(bg=random.choice(colors))
             self.root.after(120, lambda: _flash(count + 1))
         _flash()
+
+    def _commiserate_loss(self) -> None:
+        """Brief anti-celebration when the player loses: fade to muted tones."""
+        if not self.animations_enabled.get():
+            return
+        palette = [self._color("BG"), self._color("PANEL"), self._color("BTN")]
+        def _wash(count: int = 0) -> None:
+            if count >= 4:
+                self._refresh_board()
+                return
+            shade = palette[count % len(palette)]
+            for row in self.buttons:
+                for btn in row:
+                    btn.configure(bg=shade, fg=self._color("TEXT"))
+            self.root.after(140, lambda: _wash(count + 1))
+        _wash()
 
     def _undo_move(self) -> None:
         if self.session.game_over:
