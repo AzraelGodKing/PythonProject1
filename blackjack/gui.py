@@ -456,11 +456,13 @@ class BlackjackApp:
             child.destroy()
         colors = PALETTES.get(self.theme_var.get(), PALETTES["default"])
         bg = colors.get("PANEL", "#0b3d2e")
-        container.configure(bg=bg)
+        border = colors.get("BORDER", "#1e293b")
+        container.configure(bg=bg, highlightbackground=border)
         if label:
+            prefix = "> " if active else ""
             lbl = tk.Label(
                 container,
-                text=f"{'▶ ' if active else ''}{label}" + (f" [{result_text}]" if result_text else ""),
+                text=f"{prefix}{label}" + (f" [{result_text}]" if result_text else ""),
                 bg=bg,
                 fg=colors.get("TEXT", "#f8fafc"),
                 font=("Segoe UI", 11, "bold"),
@@ -475,8 +477,8 @@ class BlackjackApp:
             face_down = False
             if not reveal and idx == 1:
                 face_down = True
-            card_widget = self._create_card_widget(cards_row, card, colors=colors, face_down=face_down)
-            card_widget.pack(side="left", padx=4)
+            card_widget = self._create_card_widget(cards_row, card, colors=colors, face_down=face_down, active=active)
+            card_widget.pack(side="left", padx=6, pady=2)
         if self.show_totals.get():
             total_text = "?"
             if reveal:
@@ -490,19 +492,19 @@ class BlackjackApp:
                 font=("Segoe UI", 10),
             ).pack(anchor="w", pady=(4, 0))
 
-    def _create_card_widget(self, parent: tk.Frame, card: Card, *, colors: dict, face_down: bool) -> tk.Frame:
+    def _create_card_widget(self, parent: tk.Frame, card: Card, *, colors: dict, face_down: bool, active: bool) -> tk.Frame:
         bg = colors.get("PANEL", "#0b3d2e")
         card_bg = colors.get("CARD", "#f8fafc")
         card_fg = "#e2e8f0" if face_down else colors.get("TEXT", "#0f172a")
         border = colors.get("BORDER", "#1e293b")
         suit_symbol, suit_color = self._suit_symbol_and_color(card)
-        frame = tk.Frame(parent, width=70, height=100, bg=bg, highlightbackground=border, highlightthickness=2)
+        frame = tk.Frame(parent, width=70, height=100, bg=bg, highlightbackground=border, highlightthickness=(3 if active else 2))
         frame.pack_propagate(False)
         inner_bg = colors.get("BTN", "#94a3b8") if face_down else card_bg
         inner = tk.Frame(frame, bg=inner_bg, highlightthickness=0)
         inner.pack(fill="both", expand=True, padx=4, pady=4)
         if face_down:
-            back = tk.Label(inner, text="⧫⧫", bg=inner["bg"], fg=card_fg, font=("Segoe UI", 18, "bold"))
+            back = tk.Label(inner, text="###", bg=inner["bg"], fg=card_fg, font=("Segoe UI", 14, "bold"))
             back.pack(expand=True)
             return frame
         top = tk.Label(inner, text=card.rank, bg=inner["bg"], fg=suit_color, font=("Segoe UI", 11, "bold"), anchor="w")
@@ -701,14 +703,14 @@ class BlackjackApp:
         muted = colors.get("MUTED", text)
         accent = colors.get("ACCENT", "#38bdf8")
         style = ttk.Style(self.root)
-        style.configure("Panel.TFrame", background=panel)
-        style.configure("Banner.TLabel", background=panel, foreground=text, font=("Segoe UI", 14, "bold"))
+        style.configure("Panel.TFrame", background=panel, relief="solid", borderwidth=1)
+        style.configure("Banner.TLabel", background=panel, foreground=text, font=("Segoe UI", 14, "bold"), padding=(2, 1))
         style.configure("Muted.TLabel", background=panel, foreground=muted, font=("Segoe UI", 10))
-        style.configure("Title.TLabel", background=panel, foreground=text, font=("Segoe UI", 11, "bold"))
-        style.configure("App.TCheckbutton", background=panel, foreground=text)
-        style.configure("App.TCombobox", fieldbackground=panel, background=panel, foreground=text)
-        style.configure("Accent.TButton", padding=(10, 4), background=accent, foreground=text)
-        style.map("Accent.TButton", background=[("active", accent)])
+        style.configure("Title.TLabel", background=panel, foreground=text, font=("Segoe UI", 11, "bold"), padding=(1, 1))
+        style.configure("App.TCheckbutton", background=panel, foreground=text, padding=4)
+        style.configure("App.TCombobox", fieldbackground=panel, background=panel, foreground=text, padding=6, relief="flat")
+        style.configure("Accent.TButton", padding=(12, 6), background=accent, foreground=text, borderwidth=0, relief="flat")
+        style.map("Accent.TButton", background=[("active", accent)], foreground=[("active", bg)])
 
     def _load_settings(self) -> None:
         try:
@@ -749,11 +751,11 @@ class BlackjackApp:
         self.root.configure(bg=bg)
         style = ttk.Style(self.root)
         style.theme_use("clam")
-        style.configure("BJ.TLabel", background=panel, foreground=text)
-        style.configure("BJ.Muted.TLabel", background=panel, foreground=muted)
+        style.configure("BJ.TLabel", background=panel, foreground=text, font=("Segoe UI", 11))
+        style.configure("BJ.Muted.TLabel", background=panel, foreground=muted, font=("Segoe UI", 10))
         style.configure(
             "BJ.TButton",
-            padding=(10, 4),
+            padding=(12, 6),
             foreground=text,
             background=btn_bg,
             borderwidth=0,
@@ -761,11 +763,11 @@ class BlackjackApp:
         )
         style.map(
             "BJ.TButton",
-            background=[("active", accent)],
-            foreground=[("active", bg)],
+            background=[("active", accent), ("disabled", panel)],
+            foreground=[("active", bg), ("disabled", muted)],
         )
-        style.configure("BJ.TFrame", background=panel)
-        style.configure("BJ.TEntry", fieldbackground=panel, foreground=text, insertcolor=text)
+        style.configure("BJ.TFrame", background=panel, relief="solid", borderwidth=1, padding=8)
+        style.configure("BJ.TEntry", fieldbackground=panel, foreground=text, insertcolor=accent, padding=6, relief="flat")
         style.map("BJ.TEntry", fieldbackground=[("focus", panel)], foreground=[("disabled", muted)])
 
         # Apply to tk labels
@@ -775,8 +777,8 @@ class BlackjackApp:
         # Update frames backgrounds
         self.main_frame.configure(style="BJ.TFrame")
         self.btn_frame.configure(style="BJ.TFrame")
-        self.dealer_cards_frame.configure(bg=panel)
-        self.player_cards_frame.configure(bg=panel)
+        self.dealer_cards_frame.configure(bg=panel, highlightbackground=colors.get("BORDER", accent), highlightthickness=1)
+        self.player_cards_frame.configure(bg=panel, highlightbackground=colors.get("BORDER", accent), highlightthickness=1)
         for widget in self.main_frame.winfo_children():
             if isinstance(widget, tk.Label):
                 widget.configure(bg=panel, fg=text)

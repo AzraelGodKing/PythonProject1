@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-GAME_DIR = PROJECT_ROOT / "a tic-tac-toe game"
+GAME_DIR = PROJECT_ROOT / "tic-tac-toe"
 sys.path.insert(0, os.fspath(PROJECT_ROOT))
 sys.path.insert(0, os.fspath(GAME_DIR))
 

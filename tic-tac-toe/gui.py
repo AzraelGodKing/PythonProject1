@@ -628,11 +628,11 @@ class TicTacToeGUI:
             pass
 
         style.configure("App.TFrame", background=self._color("BG"))
-        style.configure("Panel.TFrame", background=self._color("PANEL"), relief="flat", borderwidth=1)
-        style.configure("App.TLabel", background=self._color("BG"), foreground=self._color("TEXT"), font=self._font("text"))
-        style.configure("Title.TLabel", background=self._color("PANEL"), foreground=self._color("TEXT"), font=self._font("title"))
-        style.configure("Banner.TLabel", background=self._color("BG"), foreground=self._color("ACCENT"), font=self._font("title"))
-        style.configure("Status.TLabel", background=self._color("BG"), foreground=self._color("ACCENT"), font=self._font("title"))
+        style.configure("Panel.TFrame", background=self._color("PANEL"), relief="flat", borderwidth=0)
+        style.configure("App.TLabel", background=self._color("PANEL"), foreground=self._color("TEXT"), font=self._font("text"), padding=(1, 1))
+        style.configure("Title.TLabel", background=self._color("PANEL"), foreground=self._color("TEXT"), font=self._font("title"), padding=(1, 1))
+        style.configure("Banner.TLabel", background=self._color("BG"), foreground=self._color("ACCENT"), font=self._font("title"), padding=(2, 1))
+        style.configure("Status.TLabel", background=self._color("PANEL"), foreground=self._color("ACCENT"), font=self._font("title"), padding=(1, 1))
         style.configure("Muted.TLabel", background=self._color("PANEL"), foreground=self._color("MUTED"), font=self._font("text"))
         style.configure(
             "App.TCheckbutton",
@@ -640,16 +640,17 @@ class TicTacToeGUI:
             foreground=self._color("TEXT"),
             font=self._font("text"),
             focuscolor=self._color("PANEL"),
+            padding=4,
         )
 
         style.configure("Panel.TButton", padding=(10, 8), background=self._color("PANEL"), foreground=self._color("TEXT"), borderwidth=0, relief="flat")
         style.map(
             "Panel.TButton",
-            background=[("active", self._color("ACCENT"))],
-            foreground=[("active", self._color("BG"))],
+            background=[("active", self._color("ACCENT")), ("disabled", self._color("PANEL"))],
+            foreground=[("active", self._color("BG")), ("disabled", self._color("MUTED"))],
         )
 
-        style.configure("Accent.TButton", padding=(12, 9), background=self._color("BTN"), foreground=self._color("BG"), borderwidth=0, relief="flat")
+        style.configure("Accent.TButton", padding=(12, 10), background=self._color("BTN"), foreground=self._color("BG"), borderwidth=0, relief="flat")
         style.map(
             "Accent.TButton",
             background=[("active", self._color("ACCENT"))],
@@ -661,6 +662,8 @@ class TicTacToeGUI:
             fieldbackground=self._color("PANEL"),
             background=self._color("PANEL"),
             foreground=self._color("TEXT"),
+            padding=6,
+            relief="flat",
         )
         style.map(
             "App.TCombobox",
@@ -680,12 +683,25 @@ class TicTacToeGUI:
                 ("active", self._color("TEXT")),
             ],
         )
+        style.configure(
+            "App.TEntry",
+            fieldbackground=self._color("PANEL"),
+            background=self._color("PANEL"),
+            foreground=self._color("TEXT"),
+            insertcolor=self._color("ACCENT"),
+            padding=6,
+            relief="flat",
+        )
+        style.map(
+            "App.TEntry",
+            fieldbackground=[("focus", self._color("PANEL")), ("active", self._color("PANEL"))],
+            foreground=[("disabled", self._color("MUTED"))],
+        )
 
     def _apply_theme(self) -> None:
         self.palette = self._resolve_palette(self.theme_var.get())
         self.fonts = dict(FONTS_LARGE if self.large_fonts.get() else FONTS_DEFAULT)
         self._configure_style()
-        self._apply_compact_layout()
         self._apply_compact_layout()
 
         for row in self.buttons:
@@ -707,6 +723,14 @@ class TicTacToeGUI:
             self.score_label.configure(font=self._font("text"))
             self.history_label.configure(font=self._font("text"))
             self.match_label.configure(font=self._font("text"))
+        if hasattr(self, "move_listbox"):
+            self.move_listbox.configure(
+                bg=self._color("CARD"),
+                fg=self._color("TEXT"),
+                highlightbackground=self._color("BORDER"),
+                selectbackground=self._color("ACCENT"),
+                selectforeground=self._color("BG"),
+            )
         self._refresh_all_popups_theme()
         self._save_settings()
 
@@ -1061,7 +1085,7 @@ class TicTacToeGUI:
         match_row.grid(row=1, column=0, columnspan=6, sticky="ew", pady=(6, 0))
         self.match_label_title = ttk.Label(match_row, text=self._t("label.match_best_of", "Match (best of):"), style="App.TLabel", font=self._font("title"))
         self.match_label_title.grid(row=0, column=0, sticky="w", padx=(0, 6))
-        self.match_entry = ttk.Entry(match_row, textvariable=self.match_length_var, width=6)
+        self.match_entry = ttk.Entry(match_row, textvariable=self.match_length_var, width=6, style="App.TEntry")
         self.match_entry.grid(row=0, column=1, padx=4, sticky="w")
         ttk.Button(match_row, text=self._t("button.new_match", "New Match"), style="Panel.TButton", command=self._new_match).grid(row=0, column=2, padx=4, sticky="w")
         presets = ttk.Frame(match_row, style="App.TFrame")
@@ -1086,21 +1110,21 @@ class TicTacToeGUI:
                 idx = r * 3 + c
                 btn = tk.Button(
                     board_frame,
-                    text=" ",
-                    command=lambda i=idx: self._handle_player_move(i),
-                    width=3,
-                    height=1,
-                    font=self._font("board"),
-                    bg=self._color("CELL"),
-                    fg=self._color("TEXT"),
-                    activebackground=self._color("ACCENT"),
-                    activeforeground=self._color("BG"),
-                    relief="raised",
-                    bd=2,
-                    highlightthickness=1,
-                    highlightbackground=self._color("ACCENT"),
-                    cursor="hand2",
-                )
+                      text=" ",
+                      command=lambda i=idx: self._handle_player_move(i),
+                      width=4,
+                      height=2,
+                      font=self._font("board"),
+                      bg=self._color("CELL"),
+                      fg=self._color("TEXT"),
+                      activebackground=self._color("ACCENT"),
+                      activeforeground=self._color("BG"),
+                      relief="raised",
+                      bd=3,
+                      highlightthickness=2,
+                      highlightbackground=self._color("BORDER"),
+                      cursor="hand2",
+                  )
                 btn.default_bg = self._color("CELL")  # type: ignore[attr-defined]
                 btn.default_fg = self._color("TEXT")  # type: ignore[attr-defined]
                 btn.bind("<Enter>", lambda _e, b=btn: self._hover_on(b))
@@ -1118,11 +1142,12 @@ class TicTacToeGUI:
         self.move_listbox = tk.Listbox(
             log_frame,
             height=3,
-            bg=self._color("PANEL"),
+            bg=self._color("CARD"),
             fg=self._color("TEXT"),
             highlightthickness=1,
-            highlightbackground=self._color("ACCENT"),
+            highlightbackground=self._color("BORDER"),
             selectbackground=self._color("ACCENT"),
+            selectforeground=self._color("BG"),
             activestyle="none",
             relief="flat",
         )
@@ -1612,7 +1637,10 @@ class TicTacToeGUI:
         self.last_move_idx = None
         self._save_history_now()
         self._update_streaks_and_badges(winner, elapsed)
-        self._celebrate_win()
+        if winner == "X":
+            self._celebrate_win()
+        elif winner == "O":
+            self._commiserate_loss()
         if self.auto_start.get():
             if getattr(self, "match_over", False):
                 # Auto-start a fresh match when the current one is done (helps Bo1 users).
@@ -1666,6 +1694,22 @@ class TicTacToeGUI:
                     btn.configure(bg=random.choice(colors))
             self.root.after(120, lambda: _flash(count + 1))
         _flash()
+
+    def _commiserate_loss(self) -> None:
+        """Brief anti-celebration when the player loses: fade to muted tones."""
+        if not self.animations_enabled.get():
+            return
+        palette = [self._color("BG"), self._color("PANEL"), self._color("BTN")]
+        def _wash(count: int = 0) -> None:
+            if count >= 4:
+                self._refresh_board()
+                return
+            shade = palette[count % len(palette)]
+            for row in self.buttons:
+                for btn in row:
+                    btn.configure(bg=shade, fg=self._color("TEXT"))
+            self.root.after(140, lambda: _wash(count + 1))
+        _wash()
 
     def _undo_move(self) -> None:
         if self.session.game_over:
@@ -1907,8 +1951,8 @@ class TicTacToeGUI:
 
         ttk.Combobox(frame, textvariable=self.ai_x_var, values=ai_names, state="readonly", style="App.TCombobox", width=26).grid(row=1, column=1, sticky="ew", pady=2)
         ttk.Combobox(frame, textvariable=self.ai_o_var, values=ai_names, state="readonly", style="App.TCombobox", width=26).grid(row=2, column=1, sticky="ew", pady=2)
-        ttk.Entry(frame, textvariable=self.ai_rounds_var, width=10).grid(row=3, column=1, sticky="w", pady=2)
-        ttk.Entry(frame, textvariable=self.ai_delay_var, width=10).grid(row=4, column=1, sticky="w", pady=2)
+        ttk.Entry(frame, textvariable=self.ai_rounds_var, width=10, style="App.TEntry").grid(row=3, column=1, sticky="w", pady=2)
+        ttk.Entry(frame, textvariable=self.ai_delay_var, width=10, style="App.TEntry").grid(row=4, column=1, sticky="w", pady=2)
 
         btn_bar = ttk.Frame(frame, style="App.TFrame")
         btn_bar.grid(row=5, column=0, columnspan=2, sticky="ew", pady=(8, 6))

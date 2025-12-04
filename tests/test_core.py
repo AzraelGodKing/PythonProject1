@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 import unittest
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent / "a tic-tac-toe game"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent / "tic-tac-toe"
 sys.path.insert(0, os.fspath(PROJECT_ROOT))
 
 import tictactoe as game

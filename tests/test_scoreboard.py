@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent / "a tic-tac-toe game"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent / "tic-tac-toe"
 sys.path.insert(0, os.fspath(PROJECT_ROOT))
 
 from tictactoe import scoreboard
