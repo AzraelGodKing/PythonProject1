@@ -11,12 +11,14 @@ import os
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 from pathlib import Path
+from typing import Optional
 
 # Ensure project root is on sys.path so we can import shared.deck when run directly.
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from shared import single_instance
 from shared.deck import Card, Deck
 from shared.chips import Chips
 from shared import scoreboard
@@ -24,6 +26,8 @@ from shared import options as shared_options
 from shared.options import PALETTES
 
 SETTINGS_FILE = "blackjack_settings.json"
+LOCK_FILE = PROJECT_ROOT / "data" / "locks" / "blackjack.lock"
+ACTIVE_GAME_LOCK = PROJECT_ROOT / "data" / "locks" / "active_game.lock"
 
 
 def hand_value(cards: list[Card]) -> tuple[int, bool]:
@@ -53,12 +57,30 @@ class BlackjackApp:
         self.root.title("Blackjack")
         self.root.geometry("960x720")
         self.root.minsize(900, 700)
+        self.root.columnconfigure(0, weight=1)
         self.theme_var = tk.StringVar(value="default")
         self.show_totals = tk.BooleanVar(value=True)
+        self.show_hint = tk.BooleanVar(value=True)
         self._language = "en"
-        self._available_languages = ["en"]
+        self.language_names = {
+            "en": "English",
+            "es": "Espanol",
+            "fr": "Francais",
+            "de": "Deutsch",
+            "it": "Italiano",
+            "pt": "Portugues",
+            "ru": "Russkiy",
+            "ja": "Nihongo",
+            "no": "Norsk (Bokmal)",
+        }
+        self._available_languages = self._discover_languages()
         self.settings_path = PROJECT_ROOT / "data" / SETTINGS_FILE
         self._load_settings()
+        env_lang = os.environ.get("GAME_LANGUAGE")
+        if env_lang:
+            candidate = env_lang.strip().lower()
+            if candidate in self.available_languages:
+                self._language = candidate
         self.root.configure(bg=self._color("BG"))
 
         self.deck: Deck = Deck()
@@ -76,9 +98,11 @@ class BlackjackApp:
         self.dealer_hand: list[Card] = []
         self.round_over = False
         self.scoreboard_path = PROJECT_ROOT / "data" / "blackjack_scores.json"
+        self._first_hand_done = False
 
         self._build_ui()
         self.start_round()
+        self.root.bind("<Configure>", self._on_resize)
 
     def _build_ui(self) -> None:
         menubar = tk.Menu(self.root)
@@ -103,11 +127,14 @@ class BlackjackApp:
             font=("Segoe UI", 10),
             fg="#e2e8f0",
             bg=self._color("BG"),
+            wraplength=760,
+            justify="left",
         )
         self.subtitle_label.pack(pady=(0, 14))
 
         self.main_frame = ttk.Frame(self.root, padding=12, style="BJ.TFrame")
         self.main_frame.pack(fill="both", expand=True)
+        self.main_frame.columnconfigure(0, weight=1)
 
         self.dealer_label = ttk.Label(self.main_frame, text="Dealer:", font=("Segoe UI", 12, "bold"), style="BJ.TLabel")
         self.dealer_cards_frame = tk.Frame(self.main_frame, bg=self._color("PANEL"))
@@ -123,15 +150,16 @@ class BlackjackApp:
         self.bet_entry.pack(side="left", padx=(4, 0))
 
         self.dealer_label.pack(anchor="w", pady=(0, 2))
-        self.dealer_cards_frame.pack(anchor="w", pady=(0, 10))
+        self.dealer_cards_frame.pack(anchor="w", fill="x", expand=True, pady=(0, 10))
         self.player_label.pack(anchor="w", pady=(0, 2))
-        self.player_cards_frame.pack(anchor="w", pady=(0, 10))
-        self.status_label.pack(anchor="w", pady=(8, 0))
-        self.bank_label.pack(anchor="w", pady=(4, 0))
-        bet_row.pack(anchor="w", pady=(6, 0))
+        self.player_cards_frame.pack(anchor="w", fill="x", expand=True, pady=(0, 10))
+        self.status_label.configure(wraplength=760, justify="left")
+        self.status_label.pack(anchor="w", fill="x", pady=(8, 0))
+        self.bank_label.pack(anchor="w", fill="x", pady=(4, 0))
+        bet_row.pack(anchor="w", fill="x", pady=(6, 0))
 
         self.btn_frame = ttk.Frame(self.root, padding=12, style="BJ.TFrame")
-        self.btn_frame.pack()
+        self.btn_frame.pack(fill="x")
 
         self.hit_btn = ttk.Button(self.btn_frame, text="Hit", width=10, command=self.hit, style="BJ.TButton")
         self.stand_btn = ttk.Button(self.btn_frame, text="Stand", width=10, command=self.stand, style="BJ.TButton")
@@ -140,14 +168,18 @@ class BlackjackApp:
         self.insurance_btn = ttk.Button(self.btn_frame, text="Insurance", width=12, command=self.take_insurance, style="BJ.TButton")
         self.new_round_btn = ttk.Button(self.btn_frame, text="New Round", width=12, command=self.start_round, style="BJ.TButton")
         self.save_score_btn = ttk.Button(self.btn_frame, text="Save Score", width=12, command=self._save_score, style="BJ.TButton")
+        self.hint_btn = ttk.Button(self.btn_frame, text="Hint", width=12, command=self._show_hint, style="BJ.TButton")
 
-        self.hit_btn.grid(row=0, column=0, padx=6, pady=(0, 4))
-        self.stand_btn.grid(row=0, column=1, padx=6, pady=(0, 4))
-        self.double_btn.grid(row=0, column=2, padx=6, pady=(0, 4))
-        self.split_btn.grid(row=0, column=3, padx=6, pady=(0, 4))
-        self.insurance_btn.grid(row=1, column=0, padx=6, pady=(4, 0))
-        self.new_round_btn.grid(row=1, column=1, padx=6, pady=(4, 0))
-        self.save_score_btn.grid(row=1, column=2, padx=6, pady=(4, 0))
+        self.hit_btn.grid(row=0, column=0, padx=6, pady=(0, 4), sticky="ew")
+        self.stand_btn.grid(row=0, column=1, padx=6, pady=(0, 4), sticky="ew")
+        self.double_btn.grid(row=0, column=2, padx=6, pady=(0, 4), sticky="ew")
+        self.split_btn.grid(row=0, column=3, padx=6, pady=(0, 4), sticky="ew")
+        self.insurance_btn.grid(row=1, column=0, padx=6, pady=(4, 0), sticky="ew")
+        self.new_round_btn.grid(row=1, column=1, padx=6, pady=(4, 0), sticky="ew")
+        self.save_score_btn.grid(row=1, column=2, padx=6, pady=(4, 0), sticky="ew")
+        self.hint_btn.grid(row=1, column=3, padx=6, pady=(4, 0), sticky="ew")
+        for i in range(4):
+            self.btn_frame.columnconfigure(i, weight=1)
         self._apply_theme()
 
     def start_round(self) -> None:
@@ -157,7 +189,7 @@ class BlackjackApp:
             self._update_buttons(force_disable=True)
             return
         if not self.chips.place_bet(bet):
-            self._set_status("Insufficient chips for that bet.")
+            self._set_status(f"Insufficient chips for that bet (min balance -${self.chips.max_debt}).")
             self._update_buttons(force_disable=True)
             return
 
@@ -166,13 +198,36 @@ class BlackjackApp:
         if len(self.deck) < 15:
             self.deck.reset(shuffle=True)
 
-        self.player_hands = [[self.deck.draw_one(), self.deck.draw_one()]]
-        self.hand_bets = [bet]
-        self.hand_results = [None]
-        self.hand_actions = [0]
-        self.has_split = False
-        self.insurance_bet = 0
-        self.dealer_hand = [self.deck.draw_one(), self.deck.draw_one()]
+        # Deal initial hands; on very first hand prevent dealer natural 21.
+        attempts = 0
+        while True:
+            attempts += 1
+            if attempts > 6:
+                # fail-safe: swap dealer hole card until not 21
+                while True:
+                    dealer_total, _ = hand_value(self.dealer_hand)
+                    if not (not self._first_hand_done and dealer_total == 21):
+                        break
+                    if len(self.deck) == 0:
+                        self.deck.reset(shuffle=True)
+                    self.dealer_hand[1] = self.deck.draw_one()
+                break
+
+            self.player_hands = [[self.deck.draw_one(), self.deck.draw_one()]]
+            self.hand_bets = [bet]
+            self.hand_results = [None]
+            self.hand_actions = [0]
+            self.has_split = False
+            self.insurance_bet = 0
+            self.dealer_hand = [self.deck.draw_one(), self.deck.draw_one()]
+
+            dealer_total, _ = hand_value(self.dealer_hand)
+            if not self._first_hand_done and dealer_total == 21:
+                # Avoid dealer blackjack on the very first hand; reshuffle and redeal.
+                self.deck.reset(shuffle=True)
+                continue
+            break
+
         self.round_over = False
         self.current_hand_index = 0
 
@@ -192,6 +247,7 @@ class BlackjackApp:
 
         self._refresh_ui()
         self._update_buttons()
+        self._first_hand_done = True
 
     def hit(self) -> None:
         if self.round_over:
@@ -226,7 +282,7 @@ class BlackjackApp:
         idx = self.current_hand_index
         bet = self.hand_bets[idx]
         if not self.chips.place_bet(bet):
-            self._set_status("Not enough chips to double.")
+            self._set_status(f"Not enough chips to double (limit -${self.chips.max_debt}).")
             return
         self.hand_bets[idx] += bet
         if len(self.deck) == 0:
@@ -250,7 +306,7 @@ class BlackjackApp:
         hand = self.player_hands[idx]
         bet = self.hand_bets[idx]
         if not self.chips.place_bet(bet):
-            self._set_status("Not enough chips to split.")
+            self._set_status(f"Not enough chips to split (limit -${self.chips.max_debt}).")
             return
         # Create two hands from the pair and draw one card to each new hand
         first_card, second_card = hand
@@ -277,7 +333,7 @@ class BlackjackApp:
             self._set_status("Insurance amount must be positive.")
             return
         if not self.chips.place_bet(insurance_amount):
-            self._set_status("Not enough chips for insurance.")
+            self._set_status(f"Not enough chips for insurance (limit -${self.chips.max_debt}).")
             return
         self.insurance_bet = insurance_amount
         self._set_status(f"Insurance placed: ${insurance_amount}. Play your hand.")
@@ -627,10 +683,11 @@ class BlackjackApp:
         self.double_btn.config(state="normal" if playing and self._can_double() else "disabled")
         self.split_btn.config(state="normal" if playing and self._can_split() else "disabled")
         self.insurance_btn.config(state="normal" if playing and self._can_offer_insurance() and not self.insurance_bet else "disabled")
-        # Enable new round only if the player has chips
-        if self.chips.balance <= 0:
+        self.hint_btn.config(state="normal" if playing and self.show_hint.get() else "disabled")
+        # Enable new round only if the player is above the debt limit
+        if self.chips.balance <= -self.chips.max_debt:
             self.new_round_btn.config(state="disabled")
-            self._set_status("Out of chips.")
+            self._set_status(f"At debt limit (-${self.chips.max_debt}). Add chips to continue.")
         else:
             self.new_round_btn.config(state="normal")
 
@@ -644,12 +701,77 @@ class BlackjackApp:
             return None
         return bet if bet > 0 else None
 
+    def _basic_hint(self) -> str:
+        """Return a basic-strategy hint for the current hand."""
+        if not self.player_hands or not self.dealer_hand:
+            return "No hand to hint on."
+        hand = self.player_hands[self.current_hand_index]
+        dealer_up = self.dealer_hand[0]
+        total, is_soft = hand_value(hand)
+        dealer_val = hand_value([dealer_up])[0]
+        can_split = len(hand) == 2 and hand[0].rank == hand[1].rank
+        can_double = len(hand) == 2 and not self.has_split
+
+        rank = hand[0].rank if can_split else None
+        if can_split:
+            if rank in {"A", "8"}:
+                return "Split"
+            if rank == "9":
+                return "Split" if dealer_val not in {7, 10, 11} else "Stand"
+            if rank == "7":
+                return "Split" if 2 <= dealer_val <= 7 else "Hit"
+            if rank == "6":
+                return "Split" if 2 <= dealer_val <= 6 else "Hit"
+            if rank == "4":
+                return "Split" if dealer_val in {5, 6} else "Hit"
+            if rank in {"2", "3"}:
+                return "Split" if 2 <= dealer_val <= 7 else "Hit"
+        if is_soft:
+            if total >= 19:
+                return "Stand"
+            if total == 18:
+                if dealer_val in {2, 7, 8}:
+                    return "Stand"
+                if dealer_val in {3, 4, 5, 6} and can_double:
+                    return "Double"
+                return "Hit"
+            if 13 <= total <= 17 and dealer_val in {4, 5, 6} and can_double:
+                return "Double"
+            return "Hit"
+        # Hard totals
+        if total >= 17:
+            return "Stand"
+        if total <= 8:
+            return "Hit"
+        if total == 9:
+            if 3 <= dealer_val <= 6 and can_double:
+                return "Double"
+            return "Hit"
+        if total == 10:
+            if 2 <= dealer_val <= 9 and can_double:
+                return "Double"
+            return "Hit"
+        if total == 11:
+            if dealer_val != 11 and can_double:
+                return "Double"
+            return "Hit"
+        if 12 <= total <= 16:
+            return "Stand" if 2 <= dealer_val <= 6 else "Hit"
+        return "Stand"
+
+    def _show_hint(self) -> None:
+        if not self.show_hint.get():
+            return
+        hint = self._basic_hint()
+        messagebox.showinfo("Hint", hint)
+
     # Shared options integration (minimal toggles for now)
     def _show_options(self) -> None:
         self._apply_options_styles()
         toggles = [
             ("Sound cues", tk.BooleanVar(value=False), lambda: None),
             ("Show totals", self.show_totals, self._refresh_ui),
+            ("Show hints", self.show_hint, self._save_settings),
         ]
         presets: list[tuple[str, callable]] = []
         shared_options.show_options_popup(
@@ -677,7 +799,7 @@ class BlackjackApp:
         self._apply_theme()
 
     def _lang_display(self, code: str) -> str:
-        return code
+        return self.language_names.get(code, code)
 
     @property
     def language(self) -> str:
@@ -712,6 +834,12 @@ class BlackjackApp:
         style.configure("Accent.TButton", padding=(12, 6), background=accent, foreground=text, borderwidth=0, relief="flat")
         style.map("Accent.TButton", background=[("active", accent)], foreground=[("active", bg)])
 
+    def _discover_languages(self) -> list[str]:
+        locales_dir = PROJECT_ROOT / "shared" / "locales"
+        codes = [p.stem for p in locales_dir.glob("*.json")]
+        codes = sorted(set(codes))
+        return codes or ["en"]
+
     def _load_settings(self) -> None:
         try:
             if self.settings_path.exists():
@@ -721,6 +849,8 @@ class BlackjackApp:
                     self.theme_var.set(theme)
                 if "show_totals" in data:
                     self.show_totals.set(bool(data["show_totals"]))
+                if "show_hint" in data:
+                    self.show_hint.set(bool(data["show_hint"]))
         except Exception:
             pass
 
@@ -729,15 +859,21 @@ class BlackjackApp:
             self.settings_path.parent.mkdir(parents=True, exist_ok=True)
             self.settings_path.write_text(
                 json.dumps(
-                    {
-                        "theme": self.theme_var.get(),
-                        "show_totals": self.show_totals.get(),
-                    }
-                ),
-                encoding="utf-8",
-            )
+                        {
+                            "theme": self.theme_var.get(),
+                            "show_totals": self.show_totals.get(),
+                            "show_hint": self.show_hint.get(),
+                        }
+                    ),
+                    encoding="utf-8",
+                )
         except Exception:
             pass
+
+    def _on_resize(self, event: tk.Event) -> None:
+        wrap = max(360, event.width - 220)
+        self.subtitle_label.configure(wraplength=wrap)
+        self.status_label.configure(wraplength=wrap)
 
     def _apply_theme(self) -> None:
         colors = PALETTES.get(self.theme_var.get(), PALETTES["default"])
@@ -817,7 +953,37 @@ class BlackjackApp:
         popup.configure(bg=self._color("BG"))
 
 
+def _notify_already_running() -> None:
+    message = "Blackjack is already running. Close the other window before starting a new session."
+    try:
+        tmp_root = tk.Tk()
+        tmp_root.withdraw()
+        messagebox.showinfo("Already running", message)
+        tmp_root.destroy()
+    except tk.TclError:
+        print(message, file=sys.stderr)
+
+
+def _notify_other_game_running(holder: Optional[str]) -> None:
+    name = holder or "Another game"
+    message = f"{name} is already running. Close it before starting Blackjack."
+    try:
+        tmp_root = tk.Tk()
+        tmp_root.withdraw()
+        messagebox.showinfo("Another game is running", message)
+        tmp_root.destroy()
+    except tk.TclError:
+        print(message, file=sys.stderr)
+
+
 def main() -> None:
+    if not single_instance.try_acquire_lock(ACTIVE_GAME_LOCK, "Blackjack"):
+        _notify_other_game_running(single_instance.lock_holder(ACTIVE_GAME_LOCK))
+        return
+    if not single_instance.try_acquire_lock(LOCK_FILE, "Blackjack"):
+        single_instance.release_lock(ACTIVE_GAME_LOCK)
+        _notify_already_running()
+        return
     try:
         root = tk.Tk()
     except tk.TclError as exc:

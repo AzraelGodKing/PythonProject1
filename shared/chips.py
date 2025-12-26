@@ -8,9 +8,12 @@ from dataclasses import dataclass
 @dataclass
 class Chips:
     balance: int = 0
+    max_debt: int = 500  # allow dipping to -max_debt
 
     def can_bet(self, amount: int) -> bool:
-        return amount > 0 and amount <= self.balance
+        if amount <= 0:
+            return False
+        return (self.balance - amount) >= -self.max_debt
 
     def place_bet(self, amount: int) -> bool:
         """Attempt to place a bet. Returns True if deducted, False otherwise."""

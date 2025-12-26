@@ -37,12 +37,19 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from shared.options import PALETTES
+from shared import single_instance
 
 FONTS_DEFAULT = {
     "board": ("Segoe UI", 16, "bold"),
     "text": ("Segoe UI", 11, "normal"),
     "title": ("Segoe UI", 13, "bold"),
 }
+
+# Use project-level locks so all games respect the same mutex.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+LOCK_DIR = PROJECT_ROOT / "data" / "locks"
+LOCK_FILE = LOCK_DIR / "tic_tac_toe.lock"
+ACTIVE_GAME_LOCK = LOCK_DIR / "active_game.lock"
 
 FONTS_LARGE = {
     "board": ("Segoe UI", 19, "bold"),
@@ -129,6 +136,11 @@ class TicTacToeGUI:
         self.logger = self._init_logger()
         settings = self._load_settings()
         self.language = settings.get("language", "en")
+        env_lang = os.environ.get("GAME_LANGUAGE")
+        if env_lang:
+            candidate = env_lang.strip().lower()
+            if candidate in self.available_languages:
+                self.language = candidate
         self._load_translations(self.language)
         self.large_fonts = tk.BooleanVar(value=settings["large_fonts"])
         self.theme_var = tk.StringVar(value=settings["theme"])
@@ -2161,6 +2173,29 @@ class TicTacToeGUI:
         options.show_options_popup(self)
 
 
+def _notify_already_running() -> None:
+    """Inform the user that another instance is active."""
+    message = "Tic-Tac-Toe is already running. Close the other window to start a new session."
+    try:
+        tmp_root = tk.Tk()
+        tmp_root.withdraw()
+        messagebox.showinfo("Already running", message)
+        tmp_root.destroy()
+    except tk.TclError:
+        print(message, file=sys.stderr)
+
+
+def _notify_other_game_running(holder: Optional[str]) -> None:
+    name = holder or "another game"
+    message = f"{name} is already running. Close it before starting Tic-Tac-Toe."
+    try:
+        tmp_root = tk.Tk()
+        tmp_root.withdraw()
+        messagebox.showinfo("Another game is running", message)
+        tmp_root.destroy()
+    except tk.TclError:
+        print(message, file=sys.stderr)
+
 
 def _parse_args(argv=None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Tkinter GUI for Tic-Tac-Toe")
@@ -2170,6 +2205,13 @@ def _parse_args(argv=None) -> argparse.Namespace:
 
 def main(argv=None) -> None:
     args = _parse_args(argv)
+    if not single_instance.try_acquire_lock(ACTIVE_GAME_LOCK, "Tic-Tac-Toe"):
+        _notify_other_game_running(single_instance.lock_holder(ACTIVE_GAME_LOCK))
+        return
+    if not single_instance.try_acquire_lock(LOCK_FILE, "Tic-Tac-Toe"):
+        single_instance.release_lock(ACTIVE_GAME_LOCK)
+        _notify_already_running()
+        return
     root = tk.Tk()
     if args.headless:
         root.withdraw()
