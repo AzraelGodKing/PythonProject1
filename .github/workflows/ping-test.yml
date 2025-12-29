@@ -1,0 +1,11 @@
+name: Ping Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: [self-hosted, Windows]
+    steps:
+      - name: Say hi
+        run: echo "This job ran on a self-hosted Windows runner!"
