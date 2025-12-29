@@ -1,28 +1,23 @@
-# Ignore everything by default
-*
+.vscode/
+.github/
+.venv/
+.env
 
-# Allow listed files/directories
-!.gitignore
-!README.md
-!CHANGELOG.md
-!pyproject.toml
-!/.github
-!/.github/**
-!tests/
-!tests/**
-tests/__pycache__/
+# Tests and tooling not required to play
+tests/
+test_*.py
+
+# Runtime caches
 __pycache__/
-!launcher.py
-!tic-tac-toe/
-!tic-tac-toe/**
-!shared/
-!shared/**
-# Re-ignore Python bytecode caches even inside allowed dirs
-**/__pycache__/
+*.py[cod]
 
-/tic-tac-toe/data/scoreboard/badges.json
+# Local state created at runtime
+data/
+tic-tac-toe/data/
+gui_settings.json
+tic-tac-toe/gui_settings.json
 
-/tic-tac-toe/data/history/
-/data/logs/
-/data/history/
-
+# Logs, backups, and locks
+*.log
+*.bak
+*.lock
