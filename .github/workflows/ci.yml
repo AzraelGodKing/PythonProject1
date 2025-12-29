@@ -9,28 +9,15 @@ on:
 jobs:
   tests:
     name: Self-hosted Linux (Python ${{ matrix.python-version }})
-    if: github.event_name != 'push' || github.actor == 'AzraelGodKing'
-    runs-on: [self-hosted]
-    continue-on-error: ${{ matrix.experimental }}
+    runs-on: [self-hosted, X64, Linux, default]
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - python-version: "3.11"
-            experimental: false
-          - python-version: "3.12"
-            experimental: false
-          - python-version: "3.13"
-            experimental: false
+        python-version: ["3.11", "3.12", "3.13"]
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Install Tk dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y tk tcl tk-dev python3-tk libx11-6 libxext6 libsm6 libxrender1
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
