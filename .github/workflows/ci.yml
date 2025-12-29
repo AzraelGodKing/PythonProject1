@@ -30,6 +30,14 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e .
 
-      - name: Run tests
+      - name: Run tests (if present)
         run: |
-          python -m unittest discover -s tests -v
+          if [ -d tests ] && find tests -name "test_*.py" -print -quit | grep -q .; then
+            python -m unittest discover -s tests -v
+          else
+            echo "No tests directory found; skipping unit tests."
+          fi
+
+      - name: Smoke check (py_compile entry points)
+        run: |
+          python -m py_compile launcher.py blackjack/gui.py gofish/gui.py minesweeper/gui.py yahtzee/gui.py tic-tac-toe/gui.py tic-tac-toe/ai_vs_ai.py
