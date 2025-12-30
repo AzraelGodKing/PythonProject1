@@ -5,7 +5,7 @@ on:
 
 jobs:
   ping:
-    runs-on: [Self-hosted, x64, Linux, terrramaster, nas, personal, pyhtonproject1]
+    runs-on: [self-hosted, x64, Linux, terrramaster, nas, personal, pyhtonproject1]
     steps:
       - name: Say hi
         run: echo "This job ran on a self-hosted Windows runner!"
