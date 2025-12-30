@@ -9,7 +9,7 @@ on:
 jobs:
   tests:
     name: Self-hosted Linux (Python ${{ matrix.python-version }})
-    runs-on: [self-hosted, x64, Linux, terrramaster, nas, personal, pyhtonproject1]
+    runs-on: [self-hosted, X64, Linux, terrramaster, nas, personal, pyhtonproject1]
     strategy:
       fail-fast: false
       matrix:
