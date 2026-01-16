@@ -1,4 +1,5 @@
 {
   "language": "en",
-  "theme": "default"
+  "theme": "default",
+  "sound": false
 }

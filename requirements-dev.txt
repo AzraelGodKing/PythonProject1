@@ -1,0 +1,4 @@
+# Development dependencies for testing and code quality
+
+pytest>=7.4.0
+pytest-cov>=4.1.0

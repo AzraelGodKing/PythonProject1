@@ -17,6 +17,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from shared.deck import Deck, Card
 from shared.options import PALETTES
 from shared import single_instance, settings
+from shared.theme_manager import ThemedApp
 
 CARD_BG = "#f8fafc"
 CARD_BORDER = "#cbd5e1"
@@ -140,7 +141,7 @@ class GoFishGame:
         return "draw"
 
 
-class GoFishGUI:
+class GoFishGUI(ThemedApp):
     def __init__(self, root: tk.Tk, *, debug: bool = False, headless: bool = False) -> None:
         self.root = root
         self.root.title("Go Fish")
@@ -156,6 +157,9 @@ class GoFishGUI:
         self.scoreboard_path = SCOREBOARD_FILE
         self.theme_var = tk.StringVar(value="default")
         self._load_settings()
+
+        # Initialize ThemedApp parent class
+        super().__init__(root, self.theme_var, self.theme_var.get())
 
         self.game = GoFishGame()
 
@@ -174,27 +178,28 @@ class GoFishGUI:
         self._refresh()
         self.root.bind("<Configure>", self._on_resize)
 
-    def _init_styles(self) -> None:
-        palette = PALETTES.get(self.theme_var.get(), PALETTES["default"])
-        bg = palette.get("BG", "#0c1222")
-        panel = palette.get("PANEL", "#142039")
-        text = palette.get("TEXT", "#f8fafc")
-        muted = palette.get("MUTED", "#cbd5e1")
-        btn = palette.get("BTN", ACCENT)
-        border = palette.get("BORDER", "#cbd5e1")
-        self.root.configure(bg=bg)
-        style = ttk.Style(self.root)
-        style.theme_use("clam")
-        style.configure("TLabel", background=bg, foreground=text)
-        style.configure("Title.TLabel", font=("Segoe UI", 18, "bold"), background=bg, foreground=text)
-        style.configure("Subtitle.TLabel", font=("Segoe UI", 10), foreground=muted, background=bg)
-        style.configure("Card.TFrame", background=panel, relief="solid", borderwidth=1)
-        style.configure("TFrame", background=bg)
-        style.configure("TLabelframe", background=panel, foreground=text)
-        style.configure("TLabelframe.Label", background=panel, foreground=text, font=("Segoe UI", 10, "bold"))
-        style.configure("TButton", background=btn, foreground=bg)
-        style.map("TButton", background=[("active", palette.get("ACCENT", btn))], foreground=[("active", bg)])
-        # Also style the Text widget background via direct config later
+    def _customize_styles(self) -> None:
+        """Go Fish-specific style customizations."""
+        # Get current theme colors
+        bg = self._color("BG")
+        panel = self._color("PANEL")
+        text = self._color("TEXT")
+        muted = self._color("MUTED")
+        btn = self._color("BTN")
+        border = self._color("BORDER")
+        accent = self._color("ACCENT")
+
+        # Configure Go Fish-specific ttk styles
+        self.style.theme_use("clam")
+        self.style.configure("TLabel", background=bg, foreground=text)
+        self.style.configure("Title.TLabel", font=("Segoe UI", 18, "bold"), background=bg, foreground=text)
+        self.style.configure("Subtitle.TLabel", font=("Segoe UI", 10), foreground=muted, background=bg)
+        self.style.configure("Card.TFrame", background=panel, relief="solid", borderwidth=1)
+        self.style.configure("TFrame", background=bg)
+        self.style.configure("TLabelframe", background=panel, foreground=text)
+        self.style.configure("TLabelframe.Label", background=panel, foreground=text, font=("Segoe UI", 10, "bold"))
+        self.style.configure("TButton", background=btn, foreground=bg)
+        self.style.map("TButton", background=[("active", accent)], foreground=[("active", bg)])
 
         # Remember palette pieces for card rendering
         self._palette_colors = {
@@ -204,15 +209,11 @@ class GoFishGUI:
             "muted": muted,
             "btn": btn,
             "border": border,
-            "accent": palette.get("ACCENT", btn),
+            "accent": accent,
         }
 
-    def _color(self, key: str) -> str:
-        palette = PALETTES.get(self.theme_var.get(), PALETTES["default"])
-        return palette.get(key, "#0f172a")
-
     def _build_ui(self) -> None:
-        self._init_styles()
+        self._apply_theme()
 
         menubar = tk.Menu(self.root)
         menubar.add_command(label="Scores", command=self._show_scores)

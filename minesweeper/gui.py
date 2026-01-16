@@ -20,6 +20,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from shared.options import PALETTES
 from shared import settings, single_instance
+from shared.theme_manager import ThemedApp
 
 LOCK_DIR = PROJECT_ROOT / "data" / "locks"
 LOCK_FILE = LOCK_DIR / "minesweeper.lock"
@@ -42,7 +43,7 @@ class Cell:
     adjacent: int = 0
 
 
-class MinesweeperApp:
+class MinesweeperApp(ThemedApp):
     def __init__(self, root: tk.Tk, *, headless: bool = False) -> None:
         self.root = root
         defaults = {
@@ -68,6 +69,9 @@ class MinesweeperApp:
         self.language = os.environ.get("GAME_LANGUAGE", "en")
         self.translations: Dict[str, str] = {}
         self._load_translations(self.language)
+
+        # Initialize ThemedApp parent class
+        super().__init__(root, self.theme_var, self.theme_var.get())
 
         self.root.title(self._t("minesweeper.title", "Minesweeper"))
         self.root.geometry("900x720")
@@ -196,34 +200,46 @@ class MinesweeperApp:
         self.root.bind("f", lambda e: self._on_right_click(*self.cursor))
         self.root.bind("F", lambda e: self._on_right_click(*self.cursor))
 
-    def _apply_theme(self) -> None:
-        palette = PALETTES.get(self.theme_var.get(), PALETTES["default"])
-        bg = palette.get("BG", "#0f172a")
-        panel = palette.get("PANEL", "#142039")
-        text = palette.get("TEXT", "#f8fafc")
-        muted = palette.get("MUTED", "#cbd5e1")
-        accent = palette.get("ACCENT", "#22c55e")
-        self.root.configure(bg=bg)
-        style = ttk.Style(self.root)
-        style.theme_use("clam")
-        style.configure("TFrame", background=bg)
-        style.configure("Hero.TFrame", background=panel)
-        style.configure("HeroTitle.TLabel", font=("Segoe UI", 20, "bold"), background=panel, foreground=text)
-        style.configure("HeroMuted.TLabel", font=("Segoe UI", 10), background=panel, foreground=muted)
-        style.configure("Title.TLabel", font=("Segoe UI", 18, "bold"), background=bg, foreground=text)
-        style.configure("Subtitle.TLabel", font=("Segoe UI", 10), background=bg, foreground=muted)
-        style.configure("Badge.TLabel", background=accent, foreground=bg, font=("Segoe UI", 10, "bold"), padding=(10, 4))
-        style.configure("BadgeMuted.TLabel", background=palette.get("BORDER", panel), foreground=text, font=("Segoe UI", 10), padding=(10, 4))
-        style.configure("Accent.TButton", padding=(10, 6), background=accent, foreground=bg, relief="flat")
-        style.map("Accent.TButton", background=[("active", palette.get("BTN", accent))], foreground=[("active", bg)])
-        style.configure("Cell.TButton", background=panel, foreground=text, padding=(4, 2), relief="flat")
-        style.map("Cell.TButton", background=[("active", palette.get("BTN", accent))])
-        self.palette = palette
+    def _apply_theme(self, theme_name=None) -> None:
+        """Apply theme using parent class and add game-specific customizations."""
+        # Call parent to handle standard theme configuration
+        super()._apply_theme(theme_name)
+
+        # Cache palette for quick access
+        self.palette = PALETTES.get(self.theme_var.get(), PALETTES["default"])
+
+    def _customize_styles(self) -> None:
+        """Minesweeper-specific style customizations."""
+        # Get current theme colors
+        bg = self._color("BG")
+        panel = self._color("PANEL")
+        text = self._color("TEXT")
+        muted = self._color("MUTED")
+        accent = self._color("ACCENT")
+        btn = self._color("BTN")
+        border = self._color("BORDER")
+
+        # Configure Minesweeper-specific ttk styles
+        self.style.theme_use("clam")
+        self.style.configure("TFrame", background=bg)
+        self.style.configure("Hero.TFrame", background=panel)
+        self.style.configure("HeroTitle.TLabel", font=("Segoe UI", 20, "bold"), background=panel, foreground=text)
+        self.style.configure("HeroMuted.TLabel", font=("Segoe UI", 10), background=panel, foreground=muted)
+        self.style.configure("Title.TLabel", font=("Segoe UI", 18, "bold"), background=bg, foreground=text)
+        self.style.configure("Subtitle.TLabel", font=("Segoe UI", 10), background=bg, foreground=muted)
+        self.style.configure("Badge.TLabel", background=accent, foreground=bg, font=("Segoe UI", 10, "bold"), padding=(10, 4))
+        self.style.configure("BadgeMuted.TLabel", background=border, foreground=text, font=("Segoe UI", 10), padding=(10, 4))
+        self.style.configure("Accent.TButton", padding=(10, 6), background=accent, foreground=bg, relief="flat")
+        self.style.map("Accent.TButton", background=[("active", btn)], foreground=[("active", bg)])
+        self.style.configure("Cell.TButton", background=panel, foreground=text, padding=(4, 2), relief="flat")
+        self.style.map("Cell.TButton", background=[("active", btn)])
+
+        # Set up cell colors for game rendering
         self._cell_colors = {
             "hidden": panel,
-            "hover": palette.get("HOVER", palette.get("BTN", accent)),
+            "hover": self.palette.get("HOVER", btn),
             "revealed": bg,
-            "flag": palette.get("BORDER", "#1e293b"),
+            "flag": border,
             "mine": "#ef4444",
         }
 

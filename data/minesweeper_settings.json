@@ -2,8 +2,26 @@
   "difficulty": "beginner",
   "theme": "default",
   "best_times": {
-    "beginner": null,
+    "beginner": 255,
     "intermediate": null,
     "expert": null
-  }
+  },
+  "best_times_by_mode": {
+    "classic": {
+      "beginner": 255,
+      "intermediate": null,
+      "expert": null
+    },
+    "challenge": {
+      "beginner": null,
+      "intermediate": null,
+      "expert": null
+    },
+    "puzzle": {
+      "beginner": null,
+      "intermediate": null,
+      "expert": null
+    }
+  },
+  "mode": "classic"
 }
