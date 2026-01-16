@@ -38,6 +38,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from shared.options import PALETTES
 from shared import single_instance
+from shared.theme_manager import ThemedApp
 
 FONTS_DEFAULT = {
     "board": ("Segoe UI", 16, "bold"),
@@ -103,7 +104,7 @@ class GameSession:
         self.history.append((self.label(), winner, ts))
 
 
-class TicTacToeGUI:
+class TicTacToeGUI(ThemedApp):
     def __init__(self, root: tk.Tk) -> None:
         self.available_languages = self._discover_languages()
         self.language_names = {
@@ -144,6 +145,10 @@ class TicTacToeGUI:
         self._load_translations(self.language)
         self.large_fonts = tk.BooleanVar(value=settings["large_fonts"])
         self.theme_var = tk.StringVar(value=settings["theme"])
+
+        # Initialize ThemedApp parent class
+        super().__init__(root, self.theme_var, self.theme_var.get())
+
         self.animations_enabled = tk.BooleanVar(value=settings["animations"])
         self.sound_enabled = tk.BooleanVar(value=settings["sound"])
         self.show_coords = tk.BooleanVar(value=settings["show_coords"])
@@ -218,8 +223,6 @@ class TicTacToeGUI:
         self._maybe_show_intro_overlay()
         self._maybe_show_whats_new()
 
-    def _color(self, key: str) -> str:
-        return self.palette[key]
 
     def _font(self, key: str):
         return self.fonts[key]
@@ -710,31 +713,51 @@ class TicTacToeGUI:
             foreground=[("disabled", self._color("MUTED"))],
         )
 
-    def _apply_theme(self) -> None:
+    def _apply_theme(self, theme_name=None) -> None:
+        """Apply theme using parent class and add game-specific customizations."""
+        # Set up local palette and fonts first
         self.palette = self._resolve_palette(self.theme_var.get())
         self.fonts = dict(FONTS_LARGE if self.large_fonts.get() else FONTS_DEFAULT)
-        self._configure_style()
+
+        # Call parent to handle standard theme configuration
+        super()._apply_theme(theme_name)
+
+        # Apply compact layout
         self._apply_compact_layout()
 
-        for row in self.buttons:
-            for btn in row:
-                btn.configure(
-                    bg=self._color("CELL"),
-                    fg=self._color("TEXT"),
-                    activebackground=self._color("ACCENT"),
-                    activeforeground=self._color("BG"),
-                    highlightbackground=self._color("ACCENT"),
-                    font=self._font("board"),
-                )
-                btn.default_bg = self._color("CELL")  # type: ignore[attr-defined]
-                btn.default_fg = self._color("TEXT")  # type: ignore[attr-defined]
-        self._refresh_board()
-        # update label fonts that were set explicitly
+        # Refresh popups and save settings
+        self._refresh_all_popups_theme()
+        self._save_settings()
+
+    def _customize_styles(self) -> None:
+        """Tic-Tac-Toe-specific style customizations."""
+        # Configure the ttk styles
+        self._configure_style()
+
+        # Update game buttons
+        if hasattr(self, "buttons"):
+            for row in self.buttons:
+                for btn in row:
+                    btn.configure(
+                        bg=self._color("CELL"),
+                        fg=self._color("TEXT"),
+                        activebackground=self._color("ACCENT"),
+                        activeforeground=self._color("BG"),
+                        highlightbackground=self._color("ACCENT"),
+                        font=self._font("board"),
+                    )
+                    btn.default_bg = self._color("CELL")  # type: ignore[attr-defined]
+                    btn.default_fg = self._color("TEXT")  # type: ignore[attr-defined]
+            self._refresh_board()
+
+        # Update label fonts
         if hasattr(self, "status_label"):
             self.status_label.configure(font=self._font("title"))
             self.score_label.configure(font=self._font("text"))
             self.history_label.configure(font=self._font("text"))
             self.match_label.configure(font=self._font("text"))
+
+        # Update move listbox
         if hasattr(self, "move_listbox"):
             self.move_listbox.configure(
                 bg=self._color("CARD"),
@@ -743,8 +766,6 @@ class TicTacToeGUI:
                 selectbackground=self._color("ACCENT"),
                 selectforeground=self._color("BG"),
             )
-        self._refresh_all_popups_theme()
-        self._save_settings()
 
     def _apply_compact_layout(self) -> None:
         wrap = 230 if self.compact_sidebar.get() else 260

@@ -1,0 +1,1 @@
+"""Solitaire game module."""

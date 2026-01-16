@@ -16,6 +16,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from shared.options import PALETTES
 from shared import settings, single_instance
+from shared.theme_manager import ThemedApp
 
 LOCK_DIR = PROJECT_ROOT / "data" / "locks"
 LOCK_FILE = LOCK_DIR / "yahtzee.lock"
@@ -111,7 +112,7 @@ class YahtzeeGame:
         return all(v is not None for v in self.scores.values())
 
 
-class YahtzeeGUI:
+class YahtzeeGUI(ThemedApp):
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.root.title("Yahtzee")
@@ -127,6 +128,9 @@ class YahtzeeGUI:
         self.language = os.environ.get("GAME_LANGUAGE", "en")
         self.translations: Dict[str, str] = {}
         self._load_translations(self.language)
+
+        # Initialize ThemedApp parent class
+        super().__init__(root, self.theme_var, self.theme_var.get())
 
         self.game = YahtzeeGame()
         self.dice_buttons: List[tk.Button] = []
@@ -191,24 +195,35 @@ class YahtzeeGUI:
             self.score_buttons[cat] = btn
         scores_frame.columnconfigure(1, weight=1)
 
-    def _apply_theme(self) -> None:
-        palette = PALETTES.get(self.theme_var.get(), PALETTES["default"])
-        bg = palette.get("BG", "#0c1222")
-        panel = palette.get("PANEL", "#142039")
-        text = palette.get("TEXT", "#f8fafc")
-        muted = palette.get("MUTED", "#cbd5e1")
-        accent = palette.get("ACCENT", "#2563eb")
-        btn_color = palette.get("BTN", accent)
-        self.root.configure(bg=bg)
-        style = ttk.Style(self.root)
-        style.theme_use("clam")
-        style.configure("TFrame", background=bg)
-        style.configure("Title.TLabel", font=("Segoe UI", 18, "bold"), background=bg, foreground=text)
-        style.configure("Subtitle.TLabel", font=("Segoe UI", 10), background=bg, foreground=muted)
-        style.configure("CardText.TLabel", background=bg, foreground=muted)
-        style.configure("Score.TButton", padding=(8, 6), background=btn_color, foreground=bg)
-        style.map("Score.TButton", background=[("active", accent), ("disabled", panel)], foreground=[("active", bg), ("disabled", muted)])
-        self._palette_cache = palette
+    def _apply_theme(self, theme_name=None) -> None:
+        """Apply theme using parent class and add game-specific customizations."""
+        # Call parent to handle standard theme configuration
+        super()._apply_theme(theme_name)
+
+        # Cache palette for quick access
+        self._palette_cache = PALETTES.get(self.theme_var.get(), PALETTES["default"])
+
+        # Save settings after theme change
+        settings.save_settings(Path(SETTINGS_FILE), {"theme": self.theme_var.get(), "best_score": self.best_score})
+
+    def _customize_styles(self) -> None:
+        """Yahtzee-specific style customizations."""
+        # Get current theme colors
+        bg = self._color("BG")
+        panel = self._color("PANEL")
+        text = self._color("TEXT")
+        muted = self._color("MUTED")
+        accent = self._color("ACCENT")
+        btn_color = self._color("BTN")
+
+        # Configure Yahtzee-specific ttk styles
+        self.style.theme_use("clam")
+        self.style.configure("TFrame", background=bg)
+        self.style.configure("Title.TLabel", font=("Segoe UI", 18, "bold"), background=bg, foreground=text)
+        self.style.configure("Subtitle.TLabel", font=("Segoe UI", 10), background=bg, foreground=muted)
+        self.style.configure("CardText.TLabel", background=bg, foreground=muted)
+        self.style.configure("Score.TButton", padding=(8, 6), background=btn_color, foreground=bg)
+        self.style.map("Score.TButton", background=[("active", accent), ("disabled", panel)], foreground=[("active", bg), ("disabled", muted)])
 
     def _on_resize(self, event: tk.Event) -> None:
         if getattr(self, "status_label", None):

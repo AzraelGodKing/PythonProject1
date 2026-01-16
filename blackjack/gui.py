@@ -24,6 +24,7 @@ from shared.chips import Chips
 from shared import scoreboard
 from shared import options as shared_options
 from shared.options import PALETTES
+from shared.theme_manager import ThemedApp
 
 SETTINGS_FILE = "blackjack_settings.json"
 LOCK_FILE = PROJECT_ROOT / "data" / "locks" / "blackjack.lock"
@@ -51,7 +52,7 @@ def hand_value(cards: list[Card]) -> tuple[int, bool]:
     return total, is_soft
 
 
-class BlackjackApp:
+class BlackjackApp(ThemedApp):
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.root.title("Blackjack")
@@ -81,7 +82,9 @@ class BlackjackApp:
             candidate = env_lang.strip().lower()
             if candidate in self.available_languages:
                 self._language = candidate
-        self.root.configure(bg=self._color("BG"))
+
+        # Initialize ThemedApp parent class
+        super().__init__(root, self.theme_var, self.theme_var.get())
 
         self.deck: Deck = Deck()
         self.deck.shuffle()
@@ -782,10 +785,6 @@ class BlackjackApp:
             subtitle="Shared options (expand with blackjack-specific controls).",
         )
 
-    def _color(self, key: str) -> str:
-        theme = self.theme_var.get()
-        colors = PALETTES.get(theme) or PALETTES.get("default", {})
-        return colors.get(key, PALETTES.get("default", {}).get(key, "#0b3d2e"))
 
     @property
     def options_popup(self):
@@ -796,7 +795,8 @@ class BlackjackApp:
         self._options_popup = value
 
     def _on_theme_change(self, event=None):
-        self._apply_theme()
+        """Handle theme change event."""
+        super()._on_theme_change(event)
 
     def _lang_display(self, code: str) -> str:
         return self.language_names.get(code, code)
@@ -875,21 +875,30 @@ class BlackjackApp:
         self.subtitle_label.configure(wraplength=wrap)
         self.status_label.configure(wraplength=wrap)
 
-    def _apply_theme(self) -> None:
-        colors = PALETTES.get(self.theme_var.get(), PALETTES["default"])
-        bg = colors.get("BG", "#0b3d2e")
-        panel = colors.get("PANEL", bg)
-        text = colors.get("TEXT", "#f8fafc")
-        accent = colors.get("ACCENT", "#38bdf8")
-        btn_bg = colors.get("BTN", accent)
-        muted = colors.get("MUTED", text)
+    def _apply_theme(self, theme_name=None) -> None:
+        """Apply theme using parent class and add game-specific customizations."""
+        # Call parent to handle standard theme configuration
+        super()._apply_theme(theme_name)
 
-        self.root.configure(bg=bg)
-        style = ttk.Style(self.root)
-        style.theme_use("clam")
-        style.configure("BJ.TLabel", background=panel, foreground=text, font=("Segoe UI", 11))
-        style.configure("BJ.Muted.TLabel", background=panel, foreground=muted, font=("Segoe UI", 10))
-        style.configure(
+        # Save settings after theme change
+        self._save_settings()
+
+    def _customize_styles(self) -> None:
+        """Blackjack-specific style customizations."""
+        # Get current theme colors
+        bg = self._color("BG")
+        panel = self._color("PANEL")
+        text = self._color("TEXT")
+        accent = self._color("ACCENT")
+        btn_bg = self._color("BTN")
+        muted = self._color("MUTED")
+        border = self._color("BORDER")
+
+        # Configure ttk styles with Blackjack-specific names
+        self.style.theme_use("clam")
+        self.style.configure("BJ.TLabel", background=panel, foreground=text, font=("Segoe UI", 11))
+        self.style.configure("BJ.Muted.TLabel", background=panel, foreground=muted, font=("Segoe UI", 10))
+        self.style.configure(
             "BJ.TButton",
             padding=(12, 6),
             foreground=text,
@@ -897,34 +906,41 @@ class BlackjackApp:
             borderwidth=0,
             relief="flat",
         )
-        style.map(
+        self.style.map(
             "BJ.TButton",
             background=[("active", accent), ("disabled", panel)],
             foreground=[("active", bg), ("disabled", muted)],
         )
-        style.configure("BJ.TFrame", background=panel, relief="solid", borderwidth=1, padding=8)
-        style.configure("BJ.TEntry", fieldbackground=panel, foreground=text, insertcolor=accent, padding=6, relief="flat")
-        style.map("BJ.TEntry", fieldbackground=[("focus", panel)], foreground=[("disabled", muted)])
+        self.style.configure("BJ.TFrame", background=panel, relief="solid", borderwidth=1, padding=8)
+        self.style.configure("BJ.TEntry", fieldbackground=panel, foreground=text, insertcolor=accent, padding=6, relief="flat")
+        self.style.map("BJ.TEntry", fieldbackground=[("focus", panel)], foreground=[("disabled", muted)])
 
-        # Apply to tk labels
-        self.title_label.configure(bg=bg, fg=text)
-        self.subtitle_label.configure(bg=bg, fg=muted)
+        # Configure tk widgets (non-ttk)
+        if hasattr(self, 'title_label'):
+            self.title_label.configure(bg=bg, fg=text)
+        if hasattr(self, 'subtitle_label'):
+            self.subtitle_label.configure(bg=bg, fg=muted)
+        if hasattr(self, 'main_frame'):
+            self.main_frame.configure(style="BJ.TFrame")
+        if hasattr(self, 'btn_frame'):
+            self.btn_frame.configure(style="BJ.TFrame")
+        if hasattr(self, 'dealer_cards_frame'):
+            self.dealer_cards_frame.configure(bg=panel, highlightbackground=border, highlightthickness=1)
+        if hasattr(self, 'player_cards_frame'):
+            self.player_cards_frame.configure(bg=panel, highlightbackground=border, highlightthickness=1)
+        if hasattr(self, 'main_frame'):
+            for widget in self.main_frame.winfo_children():
+                if isinstance(widget, tk.Label):
+                    widget.configure(bg=panel, fg=text)
+        if hasattr(self, 'bet_entry'):
+            self.bet_entry.configure(style="BJ.TEntry")
+        if hasattr(self, 'bet_label'):
+            self.bet_label.configure(style="BJ.TLabel")
 
-        # Update frames backgrounds
-        self.main_frame.configure(style="BJ.TFrame")
-        self.btn_frame.configure(style="BJ.TFrame")
-        self.dealer_cards_frame.configure(bg=panel, highlightbackground=colors.get("BORDER", accent), highlightthickness=1)
-        self.player_cards_frame.configure(bg=panel, highlightbackground=colors.get("BORDER", accent), highlightthickness=1)
-        for widget in self.main_frame.winfo_children():
-            if isinstance(widget, tk.Label):
-                widget.configure(bg=panel, fg=text)
-        # Entry/label styles
-        self.bet_entry.configure(style="BJ.TEntry")
-        self.bet_label.configure(style="BJ.TLabel")
+        # Apply options styles and refresh popups
         self._apply_options_styles()
         self._refresh_score_popup_theme()
         self._refresh_options_popup_theme()
-        self._save_settings()
 
     def _copy_diagnostics(self) -> None:
         pass

@@ -452,6 +452,11 @@ class GameLauncherApp:
                 script_path=self.project_root / "gofish" / "gui.py",
             ),
             GameEntry(
+                name="Solitaire",
+                description="Classic Klondike draw-one starter with stock, waste, and tableau moves.",
+                script_path=self.project_root / "solitaire" / "gui.py",
+            ),
+            GameEntry(
                 name="Yahtzee",
                 description="Roll five dice and fill your scorecard with the best categories you can.",
                 name_key="launcher.game.yahtzee.name",

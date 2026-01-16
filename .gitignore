@@ -2,13 +2,14 @@
 .venv/
 .env
 
-# Tests and tooling not required to play
-tests/
-test_*.py
-
 # Runtime caches
 __pycache__/
 *.py[cod]
+
+# Test coverage reports
+.coverage
+htmlcov/
+.pytest_cache/
 
 # Local state created at runtime
 data/
