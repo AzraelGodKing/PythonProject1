@@ -1,23 +1,28 @@
-.vscode/
-.venv/
-.env
-
-# Runtime caches
+# Python
 __pycache__/
 *.py[cod]
+*.egg-info/
+build/
+dist/
 
-# Test coverage reports
-.coverage
-htmlcov/
+# Virtual environments and editors
+.venv/
+venv/
+.env
+.vscode/
+.idea/
+
+# Test and lint caches
 .pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
 
-# Local state created at runtime
+# Runtime data is kept in the per-user data directory (see README), but never
+# commit stray copies if someone points ARCADE_HUB_DATA inside the repo.
 data/
-tic-tac-toe/data/
-gui_settings.json
-tic-tac-toe/gui_settings.json
-
-# Logs, backups, and locks
+*.lock
+*.owner
 *.log
 *.bak
-*.lock

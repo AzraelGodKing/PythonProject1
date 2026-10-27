@@ -1,2 +1,0 @@
-"""Yahtzee game module."""
-
