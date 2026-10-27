@@ -1,21 +1,65 @@
 [build-system]
-requires = ["setuptools>=64", "wheel"]
+requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "tictactoe-suite"
-version = "0.1.0"
-description = "Tic-Tac-Toe suite with CLI, Tkinter GUI, and AI vs AI simulator."
+name = "arcade-hub"
+dynamic = ["version"]
+description = "A collection of classic Tkinter games - Tic-Tac-Toe, Blackjack, Solitaire, Yahtzee, Minesweeper and Go Fish - sharing one launcher, themes and translations."
 readme = "README.md"
-requires-python = ">=3.10"
+license = "MIT"
+requires-python = ">=3.11"
 dependencies = []
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Topic :: Games/Entertainment",
+    "Environment :: X11 Applications",
+    "Environment :: Win32 (MS Windows)",
+    "Environment :: MacOS X",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.6"]
 
 [project.scripts]
-tictactoe = "tictactoe:main"
-tictactoe-gui = "gui:main"
-tictactoe-ai = "ai_vs_ai:main"
+arcade-hub = "arcade.launcher:main"
+arcade-ttt-sim = "arcade.games.tictactoe.sim:main"
 
-[tool.setuptools]
-package-dir = {"" = "tic-tac-toe"}
-packages = ["tictactoe"]
-py-modules = ["gui", "ai_vs_ai", "options", "scoreboard"]
+[project.gui-scripts]
+arcade-hub-gui = "arcade.launcher:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "arcade.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+arcade = ["locales/*.json"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF", "C4", "PIE", "PT", "RET"]
+ignore = ["RUF001"]  # card suits and dice symbols are intentional
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["PT011", "PT018"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = ["gui: needs a display (skipped automatically when Tk cannot start)"]
+
+[tool.coverage.run]
+source = ["arcade"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 85
+exclude_also = ["if __name__ == .__main__.:", "raise NotImplementedError"]

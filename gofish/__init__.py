@@ -1,2 +1,0 @@
-"""Go Fish game module."""
-
